@@ -14,14 +14,17 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
+    @CreatedBy
     private String createdBy;
-
+    @CreatedDate
     private LocalDateTime createdAt;
-
+    @LastModifiedBy
     private String updatedBy;
-
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
 }
