@@ -7,10 +7,7 @@ import lombok.Setter;
 @Builder
 @Getter
 @Setter
-public class PostSearchParams {
+public class TagSearchParams {
     private Long id;
-    private String title;
-    private String text;
-    private Long userId;
-    private String tagNames;
+    private String name;
 }
