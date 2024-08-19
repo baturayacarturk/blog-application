@@ -9,8 +9,11 @@ import com.blog.application.blog.dtos.responses.post.GetPost;
 import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
+import com.blog.application.blog.exceptions.messages.PostExceptionMessages;
+import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.helpers.params.GetPostsQueryBuilder;
 import com.blog.application.blog.helpers.params.PostSearchParams;
+import com.blog.application.blog.helpers.params.utils.ExtendedStringUtils;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -22,6 +25,7 @@ import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 @Service
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
@@ -43,7 +47,6 @@ public class PostServiceImpl implements PostService {
     public CreatedSimpleBlogPost createBlogPost(CreatePostRequest createPostRequest) {
         Post post = createdPostRequestToPostEntity(createPostRequest);
         //TODO inject TagService instead repository some business logic can be required.
-        //TODO change tag name uniqueness
         tagRepository.saveAll(post.getTags());
 
         Post savedPost = postRepository.save(post);
@@ -101,7 +104,9 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
         List<Post> post = getPostEntities(postId,null,null,null,null);
-        //TODO validate
+        if(ExtendedStringUtils.listIsNullOrEmpty(post)){
+            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND,postId));
+        }
         Post resultPost = post.get(0);
         resultPost.getTags().add(tag);
         postRepository.save(resultPost);
@@ -111,6 +116,7 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post removeTagFromPost(Post post) {
         Post response = new Post();
+        //TODO validate appropriately
         if(post!=null){
             response = postRepository.save(post);
         }
@@ -121,8 +127,8 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
         List<Post> postOptional = getPostEntities(updatePostRequest.getId(), null, null, null, null);
-        if (postOptional == null) {
-            //TODO add validation and handle errors
+        if (ExtendedStringUtils.listIsNullOrEmpty(postOptional)) {
+            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND,updatePostRequest.getId()));
         }
         Post post = postOptional.get(0);
         post.setTitle(updatePostRequest.getTitle() != null ? updatePostRequest.getTitle() : post.getTitle());
