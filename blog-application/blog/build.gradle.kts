@@ -28,10 +28,10 @@ dependencies {
 	implementation("com.h2database:h2")
 	implementation("org.flywaydb:flyway-core")
 	implementation ("org.springframework.boot:spring-boot-starter-web")
-	compileOnly("org.projectlombok:lombok")
+	compileOnly("org.projectlombok:lombok:1.18.24")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.h2database:h2")
-	annotationProcessor("org.projectlombok:lombok")
+	annotationProcessor("org.projectlombok:lombok:1.18.24")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
