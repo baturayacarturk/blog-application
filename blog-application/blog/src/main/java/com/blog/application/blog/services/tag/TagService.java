@@ -8,7 +8,8 @@ import java.util.List;
 
 public interface TagService {
 
-    AddTagResponse addTagToPost(Long postId , TagDto tagDto);
-    List<Tag> getTagEntities(Long tagId,String tagName);
-    TagDto removeTag(Long postId,Long tagId);
+    AddTagResponse addTagToPost(Long postId, TagDto tagDto);
+
+    //    List<Tag> getTagEntities(Long tagId,String tagName);
+    TagDto removeTag(Long postId, Long tagId);
 }
