@@ -1,31 +1,27 @@
 package com.blog.application.blog.services.post;
 
 import com.blog.application.blog.dtos.common.PostDto;
+import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
-import com.blog.application.blog.dtos.responses.post.GetPost;
+import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
 import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.exceptions.messages.PostExceptionMessages;
 import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.PostQueryClauses;
-import com.blog.application.blog.helpers.params.PostSearchParams;
 import com.blog.application.blog.helpers.params.utils.ExtendedStringUtils;
+import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 
 import org.springframework.stereotype.Service;
 
-import javax.persistence.EntityManager;
-import javax.persistence.TypedQuery;
+
 import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.blog.application.blog.helpers.params.PostQueryClauses.*;
 
 
 @Service
@@ -33,12 +29,10 @@ public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
-    private final EntityManager entityManager;
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, EntityManager entityManager) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
-        this.entityManager = entityManager;
     }
 
     @Override
@@ -53,64 +47,30 @@ public class PostServiceImpl implements PostService {
         createdPostDto.setText(savedPost.getText());
         //TODO validate if user null and exists.
         createdPostDto.setUserId(createdPostDto.getUserId());
-        createdPostDto.setTags(createPostRequest.getTags());
+        createdPostDto.setTags(convertToTagDtoList(savedPost.getTags()));
 
         return createdPostDto;
 
     }
 
     @Override
-    public GetPost getPostDto(Long postId, String title, String text, Long userId, String tag) {
-        List<Post> posts = getPostEntities(postId, title, text, userId, tag);
-        GetPost result = new GetPost();
-        posts.forEach(post -> {
-            PostDto postDto = new PostDto();
-            postDto.setPostId(post.getId());
-            postDto.setText(post.getText());
-            postDto.setTitle(post.getTitle());
-            Set<TagDto> tagDtos = post.getTags().stream()
-                    .map(resultTag -> {
-                        TagDto tagDto = new TagDto();
-                        tagDto.setName(resultTag.getName());
-                        return tagDto;
-                    })
-                    .collect(Collectors.toSet());
-            postDto.setTags(tagDtos);
-            result.getPosts().add(postDto);
-        });
+    public GetAllSimplifiedPost getAllSimplifiedPosts() {
+        List<SimplifiedPostProjection> simplifiedPostList = postRepository.getAllSimplifiedBlogPost();
+        List<SimplifiedPost> simplifiedPosts = simplifiedPostList.stream()
+                .map(projection -> new SimplifiedPost(projection.getTitle(), projection.getText()))
+                .collect(Collectors.toList());
 
-        return result;
+        return new GetAllSimplifiedPost(simplifiedPosts);
     }
 
-    @Override
-    public List<Post> getPostEntities(Long postId, String title, String text, Long userId, String tag) {
-        PostSearchParams postSearchParams = PostSearchParams.builder()
-                .id(postId)
-                .title(title)
-                .text(text)
-                .userId(userId)
-                .tagName(tag)
-                .build();
-        String queryString = buildPostBaseQuery();
-        String includeTagsTable = buildTagsJoin(queryString);
-        String finalQuery = buildWhereClause(includeTagsTable, postSearchParams);
 
-        Map<String, Object> parameters = getParameters(postSearchParams);
-        TypedQuery<Post> query = entityManager.createQuery(finalQuery, Post.class);
-        parameters.forEach(query::setParameter);
-        return query.getResultList();
-    }
 
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
-        List<Post> post = getPostEntities(postId, null, null, null, null);
-        if (ExtendedStringUtils.listIsNullOrEmpty(post)) {
-            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND, postId));
-        }
-        Post resultPost = post.get(0);
-        resultPost.getTags().add(tag);
-        postRepository.save(resultPost);
-        return resultPost;
+        Post post = postRepository.getPostEntity(postId);
+        post.getTags().add(tag);
+        postRepository.save(post);
+        return post;
     }
 
     @Override
@@ -124,16 +84,29 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public Post getPostEntity(Long id) {
+        return postRepository.getPostEntity(id);
+    }
+    @Override
+    public List<PostDto> getPostsByTagId(Long tagId) {
+        List<Post> postList = postRepository.getPostEntityByTagId(tagId);
+
+        return postList.stream()
+                .map(this::convertToPostDto)
+                .collect(Collectors.toList());
+    }
+
+
+
+    @Override
     @Transactional
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
-        List<Post> postOptional = getPostEntities(updatePostRequest.getId(), null, null, null, null);
-        if (ExtendedStringUtils.listIsNullOrEmpty(postOptional)) {
-            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND, updatePostRequest.getId()));
-        }
-        Post post = postOptional.get(0);
+        Post post = postRepository.getPostEntity(updatePostRequest.getId());
+
         post.setTitle(updatePostRequest.getTitle() != null ? updatePostRequest.getTitle() : post.getTitle());
         post.setText(updatePostRequest.getText() != null ? updatePostRequest.getText() : post.getText());
         var updatedPostEntity = postRepository.save(post);
+
         UpdatedPostResponse updatedPostResponse = new UpdatedPostResponse();
         updatedPostResponse.setPostId(updatedPostEntity.getId());
         updatedPostResponse.setText(updatedPostEntity.getText());
@@ -160,72 +133,24 @@ public class PostServiceImpl implements PostService {
 
         return post;
     }
-
-    private String buildPostBaseQuery() {
-        return SELECT_DISTINCT_P_FROM_POST;
+    private PostDto convertToPostDto(Post post) {
+        PostDto postDto = new PostDto();
+        postDto.setPostId(post.getId());
+        postDto.setTitle(post.getTitle());
+        postDto.setText(post.getText());
+        postDto.setTags(convertToTagDtoList(post.getTags()));
+        return postDto;
+    }
+    private List<TagDto> convertToTagDtoList(Set<Tag> tags) {
+        return tags.stream()
+                .map(this::convertToTagDto)
+                .collect(Collectors.toList());
+    }
+    private TagDto convertToTagDto(Tag tag) {
+        TagDto tagDto = new TagDto();
+        tagDto.setId(tag.getId());
+        tagDto.setName(tag.getName());
+        return tagDto;
     }
 
-    private String buildTagsJoin(String baseQuery) {
-        return baseQuery + PostQueryClauses.LEFT_JOIN_TAGS;
-    }
-
-    private String buildWhereClause(String queryWithJoin, PostSearchParams postSearchParams) {
-        StringBuilder whereBuilder = new StringBuilder(queryWithJoin);
-        whereBuilder.append(WHERE_CONDITION);
-
-        if (postSearchParams.getTagName() != null && !postSearchParams.getTagName().isEmpty()) {
-            whereBuilder.append(AND)
-                    .append(TAG_CONDITION)
-                    .append(TAG_NAME)
-                    .append(EQUALS_CONDITION)
-                    .append(TAG_NAME);
-        }
-        if (postSearchParams.getId() != null) {
-            whereBuilder.append(AND_WITH_P_ALIAS)
-                    .append(ID)
-                    .append(EQUALS_CONDITION)
-                    .append(ID);
-        }
-        if (postSearchParams.getText() != null && !postSearchParams.getText().isEmpty()) {
-            whereBuilder.append(AND_WITH_P_ALIAS)
-                    .append(TEXT)
-                    .append(EQUALS_CONDITION)
-                    .append(TEXT);
-        }
-        if (postSearchParams.getTitle() != null && !postSearchParams.getTitle().isEmpty()) {
-            whereBuilder.append(AND_WITH_P_ALIAS)
-                    .append(TITLE)
-                    .append(EQUALS_CONDITION)
-                    .append(TITLE);
-        }
-        if (postSearchParams.getUserId() != null) {
-            whereBuilder.append(AND)
-                    .append(USER_CONDITION)
-                    .append(USER_ID)
-                    .append(EQUALS_CONDITION)
-                    .append(USER_ID);
-        }
-
-        return whereBuilder.toString();
-    }
-
-
-    private Map<String, Object> getParameters(PostSearchParams postSearchParams) {
-        Map<String, Object> parameters = new HashMap<>();
-        if (postSearchParams != null) {
-            addParameterIfNotNull(parameters, ID, postSearchParams.getId());
-            addParameterIfNotNull(parameters, TEXT, postSearchParams.getText());
-            addParameterIfNotNull(parameters, TITLE, postSearchParams.getTitle());
-            addParameterIfNotNull(parameters, USER_ID, postSearchParams.getUserId());
-            addParameterIfNotNull(parameters, TAG_NAME, postSearchParams.getTagName());
-        }
-        return parameters;
-    }
-
-
-    private void addParameterIfNotNull(Map<String, Object> parameters, String key, Object value) {
-        if (value != null && !(value instanceof String && ((String) value).isEmpty())) {
-            parameters.put(key, value);
-        }
-    }
 }
