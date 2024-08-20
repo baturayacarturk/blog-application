@@ -11,13 +11,12 @@ import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.exceptions.messages.PostExceptionMessages;
 import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.GetPostsQueryBuilder;
+import com.blog.application.blog.helpers.params.PostQueryClauses;
 import com.blog.application.blog.helpers.params.PostSearchParams;
 import com.blog.application.blog.helpers.params.utils.ExtendedStringUtils;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Scope;
+
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
@@ -26,20 +25,19 @@ import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.blog.application.blog.helpers.params.PostQueryClauses.*;
+
 
 @Service
-@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
-    private final GetPostsQueryBuilder getPostsQueryBuilder;
     private final EntityManager entityManager;
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, GetPostsQueryBuilder getPostsQueryBuilder, EntityManager entityManager) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, EntityManager entityManager) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
-        this.getPostsQueryBuilder = getPostsQueryBuilder;
         this.entityManager = entityManager;
     }
 
@@ -91,21 +89,23 @@ public class PostServiceImpl implements PostService {
                 .title(title)
                 .text(text)
                 .userId(userId)
-                .tagNames(tag)
+                .tagName(tag)
                 .build();
-        String queryString = getPostsQueryBuilder.buildQuery(postSearchParams);
-        Map<String, Object> parameters = getPostsQueryBuilder.getParameters(postSearchParams);
-        TypedQuery<Post> query = entityManager.createQuery(queryString, Post.class);
+        String queryString = buildPostBaseQuery();
+        String includeTagsTable = buildTagsJoin(queryString);
+        String finalQuery = buildWhereClause(includeTagsTable, postSearchParams);
+
+        Map<String, Object> parameters = getParameters(postSearchParams);
+        TypedQuery<Post> query = entityManager.createQuery(finalQuery, Post.class);
         parameters.forEach(query::setParameter);
-        List<Post> posts = query.getResultList();
-        return posts;
+        return query.getResultList();
     }
 
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
-        List<Post> post = getPostEntities(postId,null,null,null,null);
-        if(ExtendedStringUtils.listIsNullOrEmpty(post)){
-            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND,postId));
+        List<Post> post = getPostEntities(postId, null, null, null, null);
+        if (ExtendedStringUtils.listIsNullOrEmpty(post)) {
+            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND, postId));
         }
         Post resultPost = post.get(0);
         resultPost.getTags().add(tag);
@@ -117,7 +117,7 @@ public class PostServiceImpl implements PostService {
     public Post removeTagFromPost(Post post) {
         Post response = new Post();
         //TODO validate appropriately
-        if(post!=null){
+        if (post != null) {
             response = postRepository.save(post);
         }
         return response;
@@ -128,7 +128,7 @@ public class PostServiceImpl implements PostService {
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
         List<Post> postOptional = getPostEntities(updatePostRequest.getId(), null, null, null, null);
         if (ExtendedStringUtils.listIsNullOrEmpty(postOptional)) {
-            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND,updatePostRequest.getId()));
+            throw new BusinessException(String.format(PostExceptionMessages.POST_COULD_NOT_FOUND, updatePostRequest.getId()));
         }
         Post post = postOptional.get(0);
         post.setTitle(updatePostRequest.getTitle() != null ? updatePostRequest.getTitle() : post.getTitle());
@@ -161,4 +161,71 @@ public class PostServiceImpl implements PostService {
         return post;
     }
 
+    private String buildPostBaseQuery() {
+        return SELECT_DISTINCT_P_FROM_POST;
+    }
+
+    private String buildTagsJoin(String baseQuery) {
+        return baseQuery + PostQueryClauses.LEFT_JOIN_TAGS;
+    }
+
+    private String buildWhereClause(String queryWithJoin, PostSearchParams postSearchParams) {
+        StringBuilder whereBuilder = new StringBuilder(queryWithJoin);
+        whereBuilder.append(WHERE_CONDITION);
+
+        if (postSearchParams.getTagName() != null && !postSearchParams.getTagName().isEmpty()) {
+            whereBuilder.append(AND)
+                    .append(TAG_CONDITION)
+                    .append(TAG_NAME)
+                    .append(EQUALS_CONDITION)
+                    .append(TAG_NAME);
+        }
+        if (postSearchParams.getId() != null) {
+            whereBuilder.append(AND_WITH_P_ALIAS)
+                    .append(ID)
+                    .append(EQUALS_CONDITION)
+                    .append(ID);
+        }
+        if (postSearchParams.getText() != null && !postSearchParams.getText().isEmpty()) {
+            whereBuilder.append(AND_WITH_P_ALIAS)
+                    .append(TEXT)
+                    .append(EQUALS_CONDITION)
+                    .append(TEXT);
+        }
+        if (postSearchParams.getTitle() != null && !postSearchParams.getTitle().isEmpty()) {
+            whereBuilder.append(AND_WITH_P_ALIAS)
+                    .append(TITLE)
+                    .append(EQUALS_CONDITION)
+                    .append(TITLE);
+        }
+        if (postSearchParams.getUserId() != null) {
+            whereBuilder.append(AND)
+                    .append(USER_CONDITION)
+                    .append(USER_ID)
+                    .append(EQUALS_CONDITION)
+                    .append(USER_ID);
+        }
+
+        return whereBuilder.toString();
+    }
+
+
+    private Map<String, Object> getParameters(PostSearchParams postSearchParams) {
+        Map<String, Object> parameters = new HashMap<>();
+        if (postSearchParams != null) {
+            addParameterIfNotNull(parameters, ID, postSearchParams.getId());
+            addParameterIfNotNull(parameters, TEXT, postSearchParams.getText());
+            addParameterIfNotNull(parameters, TITLE, postSearchParams.getTitle());
+            addParameterIfNotNull(parameters, USER_ID, postSearchParams.getUserId());
+            addParameterIfNotNull(parameters, TAG_NAME, postSearchParams.getTagName());
+        }
+        return parameters;
+    }
+
+
+    private void addParameterIfNotNull(Map<String, Object> parameters, String key, Object value) {
+        if (value != null && !(value instanceof String && ((String) value).isEmpty())) {
+            parameters.put(key, value);
+        }
+    }
 }

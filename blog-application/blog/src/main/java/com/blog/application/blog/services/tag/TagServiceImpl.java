@@ -7,33 +7,31 @@ import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.exceptions.messages.PostExceptionMessages;
 import com.blog.application.blog.exceptions.messages.TagExceptionMessages;
 import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.GetTagQueryBuilder;
 import com.blog.application.blog.helpers.params.TagSearchParams;
 import com.blog.application.blog.helpers.params.utils.ExtendedStringUtils;
 import com.blog.application.blog.repositories.TagRepository;
 import com.blog.application.blog.services.post.PostService;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Scope;
+
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.blog.application.blog.helpers.params.TagQueryClauses.*;
+
 @Service
-@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class TagServiceImpl implements TagService {
     private final TagRepository tagRepository;
-    private final GetTagQueryBuilder getTagQueryBuilder;
     private final EntityManager entityManager;
     private final PostService postService;
 
-    public TagServiceImpl(TagRepository tagRepository, GetTagQueryBuilder getTagQueryBuilder, EntityManager entityManager, PostService postService) {
+    public TagServiceImpl(TagRepository tagRepository, EntityManager entityManager, PostService postService) {
         this.tagRepository = tagRepository;
-        this.getTagQueryBuilder = getTagQueryBuilder;
         this.entityManager = entityManager;
         this.postService = postService;
     }
@@ -41,7 +39,6 @@ public class TagServiceImpl implements TagService {
     @Override
     @Transactional
     public AddTagResponse addTagToPost(Long postId, TagDto tagDto) {
-        //TODO add validation whether given post might bu null (tagDto)->validate
         Tag tag = new Tag();
         tag.setName(tagDto.getName());
         tagRepository.save(tag);
@@ -58,12 +55,12 @@ public class TagServiceImpl implements TagService {
                 .id(tagId)
                 .name(tagName)
                 .build();
-        String queryString = getTagQueryBuilder.buildQuery(tagSearchParams);
-        Map<String, Object> parameters = getTagQueryBuilder.getParameters(tagSearchParams);
-        TypedQuery<Tag> query = entityManager.createQuery(queryString, Tag.class);
+        String queryString = buildTagBaseQuery();
+        String finalQuery = buildWhereClause(queryString, tagSearchParams);
+        Map<String, Object> parameters = getParameters(tagSearchParams);
+        TypedQuery<Tag> query = entityManager.createQuery(finalQuery, Tag.class);
         parameters.forEach(query::setParameter);
-        List<Tag> tags = query.getResultList();
-        return tags;
+        return query.getResultList();
     }
 
     @Override
@@ -82,5 +79,46 @@ public class TagServiceImpl implements TagService {
         TagDto tagDto = new TagDto();
         tagDto.setName(tagToRemove.get().getName());
         return tagDto;
+    }
+
+    private String buildTagBaseQuery() {
+        return SELECT_T_FROM_TAG;
+    }
+
+    private String buildWhereClause(String queryWithJoin, TagSearchParams tagSearchParams) {
+        StringBuilder whereBuilder = new StringBuilder(queryWithJoin);
+        whereBuilder.append(WHERE_CONDITION);
+
+        if (tagSearchParams.getName() != null && !tagSearchParams.getName().isEmpty()) {
+            whereBuilder
+                    .append(AND_WITH_T_ALIAS)
+                    .append(NAME)
+                    .append(EQUALS_CONDITION)
+                    .append(NAME);
+        }
+        if (tagSearchParams.getId() != null) {
+            whereBuilder.append(AND_WITH_T_ALIAS)
+                    .append(ID)
+                    .append(EQUALS_CONDITION)
+                    .append(ID);
+        }
+        return whereBuilder.toString();
+    }
+
+
+    private Map<String, Object> getParameters(TagSearchParams tagSearchParams) {
+        Map<String, Object> parameters = new HashMap<>();
+        if (tagSearchParams != null) {
+            addParameterIfNotNull(parameters, ID, tagSearchParams.getId());
+            addParameterIfNotNull(parameters, NAME, tagSearchParams.getName());
+        }
+        return parameters;
+    }
+
+
+    private void addParameterIfNotNull(Map<String, Object> parameters, String key, Object value) {
+        if (value != null && !(value instanceof String && ((String) value).isEmpty())) {
+            parameters.put(key, value);
+        }
     }
 }

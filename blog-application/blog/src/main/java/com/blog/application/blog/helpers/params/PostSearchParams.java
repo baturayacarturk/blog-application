@@ -12,5 +12,5 @@ public class PostSearchParams {
     private String title;
     private String text;
     private Long userId;
-    private String tagNames;
+    private String tagName;
 }
