@@ -5,6 +5,7 @@ import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
+import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
 import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
 import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
 import com.blog.application.blog.services.post.PostService;
@@ -37,8 +38,8 @@ public class PostController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
     @GetMapping(path = "/get-by-tag/{tagId}")
-    public ResponseEntity<List<PostDto>> getAllPostsWithTagId(@PathVariable Long tagId) {
-        List<PostDto> response = postService.getPostsByTagId(tagId);
+    public ResponseEntity<List<GetAllByTagId>> getAllPostsWithTagId(@PathVariable Long tagId) {
+        List<GetAllByTagId> response = postService.getPostsByTagId(tagId);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

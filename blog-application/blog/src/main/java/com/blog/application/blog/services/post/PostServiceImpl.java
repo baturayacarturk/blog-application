@@ -1,17 +1,16 @@
 package com.blog.application.blog.services.post;
 
-import com.blog.application.blog.dtos.common.PostDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
-import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
+import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
 import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
 import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
+import com.blog.application.blog.dtos.responses.tag.TagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.utils.ExtendedStringUtils;
+
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
@@ -45,9 +44,8 @@ public class PostServiceImpl implements PostService {
         CreatedSimpleBlogPost createdPostDto = new CreatedSimpleBlogPost();
         createdPostDto.setTitle(savedPost.getTitle());
         createdPostDto.setText(savedPost.getText());
-        //TODO validate if user null and exists.
-        createdPostDto.setUserId(createdPostDto.getUserId());
-        createdPostDto.setTags(convertToTagDtoList(savedPost.getTags()));
+        createdPostDto.setPostId(savedPost.getId());
+        createdPostDto.setTags(convertToTagResponseList(savedPost.getTags()));
 
         return createdPostDto;
 
@@ -88,14 +86,18 @@ public class PostServiceImpl implements PostService {
         return postRepository.getPostEntity(id);
     }
     @Override
-    public List<PostDto> getPostsByTagId(Long tagId) {
+    public List<GetAllByTagId> getPostsByTagId(Long tagId) {
         List<Post> postList = postRepository.getPostEntityByTagId(tagId);
 
         return postList.stream()
-                .map(this::convertToPostDto)
+                .map(this::convertToGetAllByTagId)
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Post> getAllPostEntities() {
+        return getAllPostEntities();
+    }
 
 
     @Override
@@ -133,24 +135,24 @@ public class PostServiceImpl implements PostService {
 
         return post;
     }
-    private PostDto convertToPostDto(Post post) {
-        PostDto postDto = new PostDto();
-        postDto.setPostId(post.getId());
-        postDto.setTitle(post.getTitle());
-        postDto.setText(post.getText());
-        postDto.setTags(convertToTagDtoList(post.getTags()));
-        return postDto;
+    private GetAllByTagId convertToGetAllByTagId(Post post) {
+        GetAllByTagId getAllByTagId = new GetAllByTagId();
+        getAllByTagId.setPostId(post.getId());
+        getAllByTagId.setTitle(post.getTitle());
+        getAllByTagId.setText(post.getText());
+        getAllByTagId.setTags(convertToTagResponseList(post.getTags()));
+        return getAllByTagId;
     }
-    private List<TagDto> convertToTagDtoList(Set<Tag> tags) {
+    private List<TagResponse> convertToTagResponseList(Set<Tag> tags) {
         return tags.stream()
-                .map(this::convertToTagDto)
+                .map(this::convertToTagResponse)
                 .collect(Collectors.toList());
     }
-    private TagDto convertToTagDto(Tag tag) {
-        TagDto tagDto = new TagDto();
-        tagDto.setId(tag.getId());
-        tagDto.setName(tag.getName());
-        return tagDto;
+    private TagResponse convertToTagResponse(Tag tag) {
+        TagResponse tagResponse = new TagResponse();
+        tagResponse.setName(tag.getName());
+        tagResponse.setId(tag.getId());
+        return tagResponse;
     }
 
 }

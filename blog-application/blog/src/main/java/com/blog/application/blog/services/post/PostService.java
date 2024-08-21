@@ -4,6 +4,7 @@ import com.blog.application.blog.dtos.common.PostDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
+import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
 import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
 import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
 import com.blog.application.blog.entities.Post;
@@ -19,6 +20,7 @@ public interface PostService {
     Post addTagToPost(Long postId, Tag tag);
     Post removeTagFromPost(Post post);
     Post getPostEntity(Long postId);
-    List<PostDto> getPostsByTagId(Long tagId);
+    List<GetAllByTagId> getPostsByTagId(Long tagId);
+    List<Post> getAllPostEntities();
 
 }
