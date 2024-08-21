@@ -57,7 +57,6 @@ public class TagServiceImpl implements TagService {
         post.getTags().remove(tagToRemove.get());
         postService.removeTagFromPost(post);
         TagDto tagDto = new TagDto();
-        tagDto.setId(tagId);
         tagDto.setName(tagToRemove.get().getName());
         return tagDto;
     }

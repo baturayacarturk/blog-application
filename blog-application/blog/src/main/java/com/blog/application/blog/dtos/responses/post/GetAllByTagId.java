@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class CreatedSimpleBlogPost {
+public class GetAllByTagId {
     private Long postId;
     private String title;
     private String text;
