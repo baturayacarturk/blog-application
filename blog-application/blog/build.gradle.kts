@@ -38,4 +38,5 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	doNotTrackState("can't run a test twice without clean")
 }
