@@ -1,6 +1,9 @@
 package com.blog.application.blog.entities;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.*;
 import java.util.HashSet;
@@ -12,7 +15,6 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString
 public class Post extends BaseEntity {
 
     @Id
@@ -48,5 +50,9 @@ public class Post extends BaseEntity {
     @Override
     public int hashCode() {
         return Objects.hashCode(id);
+    }
+
+    public String toString() {
+        return "Post(id=" + this.getId() + ", title=" + this.getTitle() + ")";
     }
 }
