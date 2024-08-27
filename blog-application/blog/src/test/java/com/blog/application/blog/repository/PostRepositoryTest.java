@@ -1,5 +1,10 @@
 package com.blog.application.blog.repository;
 
+import com.blog.application.blog.entities.Post;
+import com.blog.application.blog.entities.Tag;
+import com.blog.application.blog.projection.SimplifiedPostProjection;
+import com.blog.application.blog.repositories.PostRepository;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.blog.application.blog.entities.Post;
@@ -9,26 +14,34 @@ import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Nested
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-public class PostRepositoryTest {
+class PostRepositoryTest {
 
     @Autowired
     private PostRepository postRepository;
 
     @Autowired
+    private TestEntityManager entityManager;
+
     private TagRepository tagRepository;
     private Long tag1Id;
-    private  Long tag2Id;
+    private Long tag2Id;
 
     @BeforeEach
     public void setUp() {
@@ -57,6 +70,8 @@ public class PostRepositoryTest {
         postRepository.save(post2);
 
     }
+
+
     @Test
     public void testGetAllSimplifiedBlogPost() {
         List<SimplifiedPostProjection> projections = postRepository.getAllSimplifiedBlogPost();
@@ -71,6 +86,7 @@ public class PostRepositoryTest {
         assertEquals("A post about health.", projections.get(1).getText());
 
     }
+
     @Test
     public void testGetPostEntity() {
         Post post = postRepository.getPostEntity(1L);
@@ -81,6 +97,7 @@ public class PostRepositoryTest {
         assertEquals(1, post.getTags().size());
         assertTrue(post.getTags().stream().anyMatch(tag -> tag.getName().equals("Technology")));
     }
+
     @Test
     public void testGetAllPostEntitites() {
         List<Post> posts = postRepository.getAllPostEntitites();
