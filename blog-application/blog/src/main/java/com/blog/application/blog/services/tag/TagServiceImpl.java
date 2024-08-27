@@ -12,16 +12,14 @@ import com.blog.application.blog.helpers.params.utils.ExtendedStringUtils;
 import com.blog.application.blog.repositories.TagRepository;
 import com.blog.application.blog.services.post.PostService;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 
 @Service
@@ -39,7 +37,11 @@ public class TagServiceImpl implements TagService {
     public AddTagResponse addTagToPost(Long postId, TagDto tagDto) {
         Tag tag = new Tag();
         User extractedUser = extractUserNameFromSecurityContext();
-        if(!postId.equals(extractedUser.getId())){
+        Post post = postService.getPostEntity(postId);
+        if(post == null){
+            throw new BusinessException("Post could not found");
+        }
+        if(!extractedUser.getId().equals(post.getUser().getId())){
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
         tag.setName(tagDto.getName());
@@ -54,11 +56,13 @@ public class TagServiceImpl implements TagService {
     @Override
     public TagDto removeTag(Long postId, Long tagId) {
         User extractedUser = extractUserNameFromSecurityContext();
-        if(!postId.equals(extractedUser.getId())){
+        Post post = postService.getPostEntity(postId);
+        if(post == null){
+            throw new BusinessException("Post could not found");
+        }
+        if(!extractedUser.getId().equals(post.getUser().getId())){
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
-        Post post = postService.getPostEntity(postId);
-
         Optional<Tag> tagToRemove = post.getTags().stream().filter(tag -> tag.getId().equals(tagId)).findFirst();
         if (tagToRemove.isEmpty()) {
             throw new BusinessException(String.format(TagExceptionMessages.TAG_COULD_NOT_FOUND, tagId));
@@ -70,9 +74,9 @@ public class TagServiceImpl implements TagService {
         return tagDto;
     }
     private static User extractUserNameFromSecurityContext() {
-        Object principalUser = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        var extractedUser = (User) ((Optional<?>) principalUser).get();
-        return extractedUser;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object principalUser = authentication.getPrincipal();
+        return (User)principalUser;
     }
 
 

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -40,6 +41,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public AuthenticationResponse register(RegisterRequest registerRequest) {
         var user = new User();
+        Optional<User> existingUser = userRepository.findByUsername(registerRequest.getUsername());
+        if(existingUser.isPresent()){
+            throw new BusinessException("Username is already taken.");
+        }
         user.setUsername(registerRequest.getUsername());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         user.setDisplayName(registerRequest.getDisplayName());

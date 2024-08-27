@@ -15,6 +15,7 @@ import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 
 import com.blog.application.blog.services.user.UserService;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +49,6 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
         Post post = createdPostRequestToPostEntity(createPostRequest, user.get());
-        //TODO inject TagService instead repository some business logic can be required.
         tagRepository.saveAll(post.getTags());
 
         Post savedPost = postRepository.save(post);
@@ -77,6 +77,10 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
         Post post = postRepository.getPostEntity(postId);
+        User extractedUser = extractUserNameFromSecurityContext();
+        if (!extractedUser.getUsername().equals(post.getUser().getUsername())) {
+            throw new BusinessException("User not found");
+        }
         post.getTags().add(tag);
         postRepository.save(post);
         return post;
@@ -85,7 +89,6 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post removeTagFromPost(Post post) {
         Post response = new Post();
-        //TODO validate appropriately
         if (post != null) {
             response = postRepository.save(post);
         }
@@ -101,7 +104,7 @@ public class PostServiceImpl implements PostService {
     public List<GetAllByTagId> getPostsByTagId(Long tagId) {
         List<Post> postList = postRepository.getPostEntityByTagId(tagId);
         User extractedUser = extractUserNameFromSecurityContext();
-        if(!postList.get(0).getUser().getId().equals(extractedUser.getId())){
+        if (!postList.get(0).getUser().getId().equals(extractedUser.getId())) {
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
 
@@ -119,7 +122,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public DeletedPostResponse deletePostById(Long postId) {
         Post post = postRepository.getPostEntity(postId);
-        if(post == null){
+        if (post == null) {
             throw new BusinessException("Post not found");
         }
         User currentUser = extractUserNameFromSecurityContext();
@@ -127,8 +130,8 @@ public class PostServiceImpl implements PostService {
         if (!user.isPresent()) {
             throw new BusinessException("User not found");
         }
-        boolean matchedPost = user.get().getPosts().stream().anyMatch(p->p.getId().equals(postId));
-        if(!matchedPost){
+        boolean matchedPost = user.get().getPosts().stream().anyMatch(p -> p.getId().equals(postId));
+        if (!matchedPost) {
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
         user.get().getPosts().remove(post);
@@ -145,7 +148,7 @@ public class PostServiceImpl implements PostService {
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
         User extractedUser = extractUserNameFromSecurityContext();
         Post post = postRepository.getPostEntity(updatePostRequest.getId());
-        if(!post.getUser().getId().equals(extractedUser.getId())){
+        if (!post.getUser().getId().equals(extractedUser.getId())) {
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
 
@@ -200,9 +203,8 @@ public class PostServiceImpl implements PostService {
     }
 
     private static User extractUserNameFromSecurityContext() {
-        Object principalUser = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        var extractedUser = (User) ((Optional<?>) principalUser).get();
-        return extractedUser;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object principalUser = authentication.getPrincipal();
+        return (User)principalUser;
     }
-
 }
