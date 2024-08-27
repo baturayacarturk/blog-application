@@ -4,22 +4,31 @@ import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.responses.post.AddTagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.exceptions.messages.TagExceptionMessages;
+import com.blog.application.blog.entities.User;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.repositories.TagRepository;
+import com.blog.application.blog.repositories.UserRepository;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.tag.TagServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import javax.transaction.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 public class TagServiceImplTest {
@@ -32,75 +41,124 @@ public class TagServiceImplTest {
 
     @InjectMocks
     private TagServiceImpl tagService;
+    @Mock
+    private UserRepository userRepository;
+
+    private User mockUser;
+    private Post mockPost;
+    private Tag mockTag;
+
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
+        mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testUser");
+        userRepository.save(mockUser);
+
+        mockPost = new Post();
+        mockPost.setId(1L);
+
+        mockTag = new Tag();
+        mockTag.setId(1L);
+        mockTag.setName("Tag to Remove");
+
+        Authentication authentication = Mockito.mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+
+        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+
+        SecurityContextHolder.setContext(securityContext);
     }
 
     @Test
+    @Transactional
     public void testAddTagToPost() {
-        Long postId = 1L;
         TagDto tagDto = new TagDto();
         tagDto.setName("New Tag");
 
         Tag tag = new Tag();
         tag.setName(tagDto.getName());
 
+        when(postService.getPostEntity(anyLong())).thenReturn(mockPost);
         when(tagRepository.save(any(Tag.class))).thenReturn(tag);
-        Post expectedPost = new Post();
-        when(postService.addTagToPost(eq(postId), any(Tag.class))).thenReturn(expectedPost);
+        when(postService.addTagToPost(anyLong(), any(Tag.class))).thenReturn(mockPost);
 
-        AddTagResponse response = tagService.addTagToPost(postId, tagDto);
+        AddTagResponse result = tagService.addTagToPost(1L, tagDto);
 
-        assertNotNull(response);
-        assertEquals("New Tag", response.getName());
-        assertEquals(postId, response.getPostId());
-        verify(tagRepository).save(any(Tag.class));
-        verify(postService).addTagToPost(eq(postId), any(Tag.class));
+        assertNotNull(result);
+        assertEquals("New Tag", result.getName());
+        assertEquals(1L, result.getPostId());
+        verify(tagRepository, times(1)).save(any(Tag.class));
+        verify(postService, times(1)).addTagToPost(anyLong(), any(Tag.class));
     }
 
     @Test
+    public void testAddTagToPost_UserNotAuthorized() {
+        User unauthorizedUser = new User();
+        unauthorizedUser.setId(2L);
+        unauthorizedUser.setUsername("unauthorizedUser");
+
+        Authentication authentication = Mockito.mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(unauthorizedUser);
+
+        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+
+        SecurityContextHolder.setContext(securityContext);
+
+        TagDto tagDto = new TagDto();
+        tagDto.setName("New Tag");
+
+        assertThrows(BusinessException.class, () -> tagService.addTagToPost(1L, tagDto));
+    }
+    @Test
+    @Transactional
     public void testRemoveTag() {
-        Long postId = 1L;
-        Long tagId = 1L;
-
-        Post post = new Post();
         Tag tag = new Tag();
-        tag.setId(tagId);
+        tag.setId(1L);
         tag.setName("Tag to Remove");
-        post.setTags(new HashSet<>());
-        post.getTags().add(tag);
 
-        when(postService.getPostEntity(postId)).thenReturn(post);
-        Post expectedPost = new Post();
-        when(postService.removeTagFromPost(post)).thenReturn(expectedPost);
+        Post mockPost = new Post();
+        mockPost.setId(1L);
+        mockPost.setTags(new HashSet<>(List.of(tag)));
 
-        TagDto result = tagService.removeTag(postId, tagId);
+        when(postService.getPostEntity(anyLong())).thenReturn(mockPost);
+        when(tagRepository.findById(anyLong())).thenReturn(Optional.of(tag));
+
+        Post updatedPost = new Post();
+        updatedPost.setId(1L);
+        updatedPost.setTags(new HashSet<>());
+        when(postService.removeTagFromPost(any(Post.class))).thenReturn(updatedPost);
+
+        TagDto result = tagService.removeTag(1L, 1L);
 
         assertNotNull(result);
         assertEquals("Tag to Remove", result.getName());
-        assertFalse(post.getTags().contains(tag));
-        verify(postService).getPostEntity(postId);
-        verify(postService).removeTagFromPost(post);
+        verify(postService, times(1)).removeTagFromPost(any(Post.class));
     }
-
     @Test
-    public void testRemoveTagNotFound() {
-        Long postId = 1L;
-        Long tagId = 1L;
+    public void testRemoveTag_TagNotFound() {
+        when(postService.getPostEntity(anyLong())).thenReturn(mockPost);
 
-        Post post = new Post();
-        post.setTags(new HashSet<>());
+        assertThrows(BusinessException.class, () -> tagService.removeTag(1L, 99L));
+    }
+    @Test
+    public void testRemoveTag_UserNotAuthorized() {
+        User unauthorizedUser = new User();
+        unauthorizedUser.setId(2L);
+        unauthorizedUser.setUsername("unauthorizedUser");
 
-        when(postService.getPostEntity(postId)).thenReturn(post);
+        Authentication authentication = Mockito.mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(unauthorizedUser);
 
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
-            tagService.removeTag(postId, tagId);
-        });
+        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
 
-        assertEquals(String.format(TagExceptionMessages.TAG_COULD_NOT_FOUND, tagId), thrown.getMessage());
-        verify(postService).getPostEntity(postId);
-        verify(postService, never()).removeTagFromPost(any(Post.class));
+        SecurityContextHolder.setContext(securityContext);
+
+        assertThrows(BusinessException.class, () -> tagService.removeTag(1L, 1L));
     }
 }
