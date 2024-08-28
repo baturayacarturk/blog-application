@@ -10,10 +10,13 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.ApiParam;
 import lombok.AllArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping(path = "/api/users", produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -22,6 +25,8 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private static final Logger logger = LogManager.getLogger(UserController.class);
+
 
     /**
      * Registers a new user and returns an authentication response with a JWT token.
@@ -39,7 +44,9 @@ public class UserController {
     public ResponseEntity<AuthenticationResponse> register(
             @ApiParam(value = "Details of the user to be registered", required = true)
             @RequestBody RegisterRequest registerRequest) {
+
         AuthenticationResponse authenticationResponse = userService.register(registerRequest);
+        logger.info("User with username {} has been registered successfully", registerRequest.getUsername());
         return new ResponseEntity<>(authenticationResponse, HttpStatus.CREATED);
     }
 

@@ -9,6 +9,8 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.ApiParam;
 import lombok.AllArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 @AllArgsConstructor
 @Api(value = "Tag Management", tags = "Tags")
 public class TagController {
+
+    private static final Logger logger = LogManager.getLogger(TagController.class);
 
     private final TagService tagService;
 
@@ -41,7 +45,13 @@ public class TagController {
             @PathVariable Long postId,
             @ApiParam(value = "Details of the tag to be added", required = true)
             @RequestBody TagDto tagDto) {
+
+        logger.info("Received request to add tag to post with ID: {}, Tag details: {}", postId, tagDto);
+
         AddTagResponse createdTag = tagService.addTagToPost(postId, tagDto);
+
+        logger.info("Response for adding tag to post with ID: {}: {}", postId, createdTag);
+
         return new ResponseEntity<>(createdTag, HttpStatus.CREATED);
     }
 
@@ -65,7 +75,13 @@ public class TagController {
             @PathVariable Long postId,
             @ApiParam(value = "ID of the tag to be removed", required = true)
             @RequestParam Long tagId) {
+
+        logger.info("Received request to remove tag with ID: {} from post with ID: {}", tagId, postId);
+
         TagDto removedTag = tagService.removeTag(postId, tagId);
+
+        logger.info("Response for removing tag with ID: {} from post with ID: {}: {}", tagId, postId, removedTag);
+
         return new ResponseEntity<>(removedTag, HttpStatus.OK);
     }
 }

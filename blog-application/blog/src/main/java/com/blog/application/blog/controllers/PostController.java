@@ -18,6 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.MediaType;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
@@ -34,6 +36,7 @@ import java.util.List;
 public class PostController {
 
     private final PostService postService;
+    private static final Logger logger = LogManager.getLogger(PostController.class);
 
     /**
      * Creates a new blog post.
@@ -50,7 +53,9 @@ public class PostController {
     public ResponseEntity<CreatedSimpleBlogPost> createPost(
             @ApiParam(value = "Details of the post to be created", required = true)
             @RequestBody CreatePostRequest createPostRequest) {
+        logger.info("Received request to create a blog post with details: {}", createPostRequest);
         CreatedSimpleBlogPost createdPost = postService.createBlogPost(createPostRequest);
+        logger.info("Blog post created successfully with ID: {}", createdPost.getPostId());
         return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
     }
 
@@ -65,7 +70,9 @@ public class PostController {
     })
     @GetMapping(path = "/get-simplified-posts")
     public ResponseEntity<GetAllSimplifiedPost> getAllSimplifiedPosts() {
+        logger.info("Received request to retrieve all simplified blog posts");
         GetAllSimplifiedPost response = postService.getAllSimplifiedPosts();
+        logger.info("Retrieved {} simplified blog posts", response.getPosts().size());
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -84,7 +91,9 @@ public class PostController {
     public ResponseEntity<List<GetAllByTagId>> getAllPostsWithTagId(
             @ApiParam(value = "ID of the tag", required = true)
             @PathVariable Long tagId) {
+        logger.info("Received request to retrieve posts with tag ID: {}", tagId);
         List<GetAllByTagId> response = postService.getPostsByTagId(tagId);
+        logger.info("Retrieved {} posts associated with tag ID: {}", response.size(), tagId);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -103,7 +112,9 @@ public class PostController {
     public ResponseEntity<UpdatedPostResponse> updatePost(
             @ApiParam(value = "Updated details of the post", required = true)
             @RequestBody UpdatePostRequest postDetails) {
+        logger.info("Received request to update a post with details: {}", postDetails);
         UpdatedPostResponse updatedPost = postService.updatePost(postDetails);
+        logger.info("Post updated successfully with ID: {}", updatedPost.getPostId());
         return ResponseEntity.ok(updatedPost);
     }
 
@@ -122,7 +133,9 @@ public class PostController {
     public ResponseEntity<DeletedPostResponse> deletePost(
             @ApiParam(value = "ID of the post to be deleted", required = true)
             @PathVariable Long postId) {
+        logger.info("Received request to delete post with ID: {}", postId);
         DeletedPostResponse response = postService.deletePostById(postId);
+        logger.info("Post with ID: {} deleted successfully", postId);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
