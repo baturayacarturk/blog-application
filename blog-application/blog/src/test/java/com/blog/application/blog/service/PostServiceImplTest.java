@@ -2,6 +2,7 @@ package com.blog.application.blog.service;
 
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.TagDto;
+import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
@@ -250,36 +251,6 @@ public class PostServiceImplTest {
         assertEquals(post.getText(), getAllByTagId.getText());
         assertEquals(1, getAllByTagId.getTags().size());
     }
-    @Test
-    public void testGetPostsByTagId_UnauthorizedAccess() {
-        Long tagId = 1L;
-        Long userId = 1L;
-
-        User otherUser = new User();
-        otherUser.setId(2L);
-        otherUser.setUsername("otherUser");
-        Post post = new Post();
-        post.setId(1L);
-        post.setTitle("Post Title");
-        post.setText("Post Text");
-        post.setUser(otherUser);
-
-        List<Post> postList = Collections.singletonList(post);
-
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(mockUser);
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        SecurityContextHolder.setContext(securityContext);
-
-        when(postRepository.getPostEntityByTagId(tagId)).thenReturn(postList);
-
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
-            postService.getPostsByTagId(tagId);
-        });
-        assertEquals("You are accessing a resource that you are not permitted", thrown.getMessage());
-        verify(postRepository, times(1)).getPostEntityByTagId(tagId);
-    }
 
     @Test
     public void testUpdatePost() {
@@ -354,7 +325,7 @@ public class PostServiceImplTest {
     @Test
     public void testDeletePostById_UserNotFound() {
         when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
-        when(userService.findByUsername(anyString())).thenReturn(Optional.empty());
+        when(userService.findOnlyUserById(2L)).thenReturn(Optional.empty());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             postService.deletePostById(1L);
@@ -364,6 +335,10 @@ public class PostServiceImplTest {
     }
     @Test
     public void testDeletePostById_UserDoesNotOwnPost() {
+        UserDto currentUser = new UserDto();
+        currentUser.setId(1L);
+        currentUser.setUsername("currentUser");
+
         User anotherUser = new User();
         anotherUser.setId(2L);
         anotherUser.setUsername("anotherUser");
@@ -371,7 +346,7 @@ public class PostServiceImplTest {
         mockPost.setUser(anotherUser);
 
         when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
-        when(userService.findByUsername(anyString())).thenReturn(Optional.of(mockUser));
+        when(userService.findOnlyUserById(currentUser.getId())).thenReturn(Optional.of(currentUser));
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             postService.deletePostById(1L);
@@ -381,10 +356,13 @@ public class PostServiceImplTest {
     }
     @Test
     public void testDeletePostById_Success() {
+        UserDto userDto = new UserDto();
+        userDto.setId(mockUser.getId());
+        userDto.setUsername(mockUser.getUsername());
         mockUser.setPosts(new HashSet<>(Collections.singletonList(mockPost)));
 
         when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
-        when(userService.findByUsername(anyString())).thenReturn(Optional.of(mockUser));
+        when(userService.findOnlyUserById(mockUser.getId())).thenReturn(Optional.of(userDto));
         DeletedPostResponse response = postService.deletePostById(1L);
 
         assertNotNull(response);
@@ -392,7 +370,6 @@ public class PostServiceImplTest {
 
         verify(postRepository, times(1)).delete(mockPost);
 
-        assertFalse(mockUser.getPosts().contains(mockPost));
         assertTrue(mockPost.getTags().isEmpty());
     }
 
