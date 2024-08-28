@@ -1,5 +1,6 @@
 package com.blog.application.blog.services.user;
 
+import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.user.AuthenticationRequest;
 import com.blog.application.blog.dtos.requests.user.RegisterRequest;
 import com.blog.application.blog.dtos.responses.user.AuthenticationResponse;
@@ -88,6 +89,12 @@ public class UserServiceImpl implements UserService {
     public Optional<User> findByUsername(String username) {
         Optional<User> user =  userRepository.findByUsername(username);
         return user;
+    }
+
+    @Override
+    public Optional<UserDto> findOnlyUserById(Long userId) {
+        //TODO can be added validation and return without optional
+        return userRepository.findOnlyUser(userId);
     }
 
     private void revokeAllUserTokens(User user){

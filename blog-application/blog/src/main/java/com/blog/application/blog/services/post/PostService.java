@@ -17,7 +17,6 @@ public interface PostService {
     Post removeTagFromPost(Post post);
     Post getPostEntity(Long postId);
     List<GetAllByTagId> getPostsByTagId(Long tagId);
-    List<Post> getAllPostEntities();
     DeletedPostResponse deletePostById(Long postId);
 
 }

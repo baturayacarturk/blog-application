@@ -1,6 +1,7 @@
 package com.blog.application.blog.services.post;
 
 import com.blog.application.blog.dtos.common.SimplifiedPost;
+import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
@@ -103,20 +104,12 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<GetAllByTagId> getPostsByTagId(Long tagId) {
         List<Post> postList = postRepository.getPostEntityByTagId(tagId);
-        User extractedUser = extractUserNameFromSecurityContext();
-        if (!postList.get(0).getUser().getId().equals(extractedUser.getId())) {
-            throw new BusinessException("You are accessing a resource that you are not permitted");
-        }
-
         return postList.stream()
                 .map(this::convertToGetAllByTagId)
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<Post> getAllPostEntities() {
-        return getAllPostEntities();
-    }
+
 
     @Override
     @Transactional
@@ -126,15 +119,14 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException("Post not found");
         }
         User currentUser = extractUserNameFromSecurityContext();
-        Optional<User> user = userService.findByUsername(currentUser.getUsername());
-        if (!user.isPresent()) {
+        Optional<UserDto> userDto = userService.findOnlyUserById(currentUser.getId());
+        if (!userDto.isPresent()) {
             throw new BusinessException("User not found");
         }
-        boolean matchedPost = user.get().getPosts().stream().anyMatch(p -> p.getId().equals(postId));
+        boolean matchedPost = post.getUser().getId().equals(userDto.get().getId());
         if (!matchedPost) {
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
-        user.get().getPosts().remove(post);
         post.getTags().clear();
         postRepository.delete(post);
         DeletedPostResponse response = new DeletedPostResponse();
@@ -204,7 +196,19 @@ public class PostServiceImpl implements PostService {
 
     private static User extractUserNameFromSecurityContext() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principalUser = authentication.getPrincipal();
-        return (User)principalUser;
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof User) {
+            return (User) principal;
+        } else if (principal instanceof Optional<?>) {
+            Optional<?> optionalPrincipal = (Optional<?>) principal;
+            if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
+                return (User) optionalPrincipal.get();
+            } else {
+                throw new IllegalStateException("Unexpected principal type");
+            }
+        } else {
+            throw new IllegalStateException("Principal is not of type User or Optional<User>");
+        }
     }
 }
