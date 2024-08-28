@@ -26,7 +26,14 @@ public class SecurityConfiguration {
             "/api/users/register",
             "/api/users/authenticate",
             "/api/posts/get-by-tag/**",
-            "/api/posts/get-simplified-posts"
+            "/api/posts/get-simplified-posts",
+            "/v2/api-docs",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/swagger-resources",
+            "/swagger-resources/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
     };
 
 
@@ -51,7 +58,6 @@ public class SecurityConfiguration {
                                 .logoutSuccessHandler((request, response, authentication) -> SecurityContextHolder.clearContext())
                 )
         ;
-        httpSecurity.headers().frameOptions().disable();
 
 
         return httpSecurity.build();
