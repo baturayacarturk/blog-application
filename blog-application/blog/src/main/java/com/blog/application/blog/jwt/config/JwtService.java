@@ -17,7 +17,7 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    @Value("${blogapp.key}")
+    @Value("${secret.key}")
     private  String KEY;
 
     public String extractUsername(String token) {

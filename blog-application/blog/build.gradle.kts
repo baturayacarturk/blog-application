@@ -5,6 +5,7 @@ plugins {
     java
     id("org.springframework.boot") version "2.7.18"
     id("io.spring.dependency-management") version "1.1.6"
+    id("org.flywaydb.flyway") version "9.8.2"
 }
 
 group = "com.blog.application"
@@ -30,9 +31,10 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("com.h2database:h2")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.flywaydb:flyway-core")
+    implementation("com.h2database:h2")
+    implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("org.flywaydb:flyway-mysql")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
     implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
@@ -43,20 +45,23 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.slf4j:slf4j-api:1.7.36")
 
+    runtimeOnly("mysql:mysql-connector-java:8.0.33")
     compileOnly("org.projectlombok:lombok:1.18.24")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
-    runtimeOnly("com.h2database:h2")
     annotationProcessor("org.projectlombok:lombok:1.18.24")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+
 tasks.withType<Test> {
     useJUnitPlatform()
     doNotTrackState("can't run a test twice without clean")
 }
+
 tasks.test {
     testLogging {
         events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)

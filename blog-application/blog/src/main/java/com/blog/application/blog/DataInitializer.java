@@ -20,9 +20,8 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if ("test".equals(System.getProperty("env"))) {
-            return;
-        }
+        postRepository.deleteAll();
+        tagRepository.deleteAll();
         Tag techTag = new Tag();
         techTag.setName("Tech");
         tagRepository.save(techTag);
