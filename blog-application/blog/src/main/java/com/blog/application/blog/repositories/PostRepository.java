@@ -15,7 +15,7 @@ public interface PostRepository extends JpaRepository<Post,Long> {
     Post getPostEntity(Long postId);
     @Query("SELECT p FROM Post p JOIN FETCH p.tags t WHERE t.id = :tagId")
     List<Post> getPostEntityByTagId(Long tagId);
-    @Query("SELECT p FROM Post p LEFT JOIN FETCH p.tags")
+    @Query("SELECT DISTINCT p FROM Post p LEFT JOIN FETCH p.tags")
     List<Post> getAllPostEntitites();
 
 }

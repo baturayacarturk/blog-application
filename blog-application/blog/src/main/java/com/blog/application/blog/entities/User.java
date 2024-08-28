@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -25,6 +26,8 @@ public class User extends BaseEntity {
     private String displayName;
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Post> posts = new HashSet<>();
+    @OneToMany(mappedBy = "user")
+    private List<Token> tokens;
 
     @Override
     public boolean equals(Object o) {

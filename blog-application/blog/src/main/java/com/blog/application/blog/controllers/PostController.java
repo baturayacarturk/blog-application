@@ -4,10 +4,7 @@ import com.blog.application.blog.dtos.common.PostDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
-import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
-import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
-import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
-import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
+import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.services.post.PostService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -48,6 +45,13 @@ public class PostController {
     public ResponseEntity<UpdatedPostResponse> updatePost(@RequestBody UpdatePostRequest postDetails) {
         UpdatedPostResponse updatedPost = postService.updatePost(postDetails);
         return ResponseEntity.ok(updatedPost);
+    }
+    @DeleteMapping(path = "/delete/{postId}")
+    public ResponseEntity<DeletedPostResponse> deletePost(@PathVariable Long postId){
+        DeletedPostResponse response = postService.deletePostById(postId);
+        return new ResponseEntity<>(response,HttpStatus.OK);
+
+
     }
 
 

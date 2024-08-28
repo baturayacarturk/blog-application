@@ -2,6 +2,7 @@ package com.blog.application.blog.jwt.config;
 
 import com.blog.application.blog.entities.User;
 import com.blog.application.blog.exceptions.types.BusinessException;
+import com.blog.application.blog.repositories.TokenRepository;
 import com.blog.application.blog.repositories.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final TokenRepository tokenRepository;
 
     @Override
     protected void doFilterInternal(
@@ -38,12 +40,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         jwt = authenticationHeader.substring(7);
         username = jwtService.extractUsername(jwt);
+        var isTokenValid = tokenRepository.findByToken(jwt)
+                .map(t -> !t.isExpired() && !t.isRevoked())
+                .orElse(false);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             Optional<User> user = userRepository.findByUsername(username);
             if (user.isEmpty()) {
                 throw new BusinessException("User not found");
             }
-            if (jwtService.isTokenValid(jwt, user.get())) {
+            if (jwtService.isTokenValid(jwt, user.get()) && isTokenValid) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         user,
                         null,
