@@ -8,7 +8,7 @@ Before running the application, certain steps must be completed to ensure that t
 
 > **Note:** If you do not have Docker installed on your system, start with [1.2 Create the Database and User].
 
-### 1. Create the Database and User
+### 1. Run the application
 Go to the location where docker file exist and open in any terminal execute  `docker-compose up`.
 
 
