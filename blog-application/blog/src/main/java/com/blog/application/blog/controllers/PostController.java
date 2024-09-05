@@ -70,9 +70,11 @@ public class PostController {
             @ApiResponse(code = 200, message = "Posts retrieved successfully", response = GetAllSimplifiedPost.class)
     })
     @GetMapping(path = "/get-simplified-posts")
-    public ResponseEntity<GetAllSimplifiedPost> getAllSimplifiedPosts() {
-        logger.info("Received request to retrieve all simplified blog posts");
-        GetAllSimplifiedPost response = postService.getAllSimplifiedPosts();
+    public ResponseEntity<GetAllSimplifiedPost> getAllSimplifiedPosts(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit) {
+        logger.info("Received request to retrieve simplified blog posts with offset {} and limit {}", offset, limit);
+        GetAllSimplifiedPost response = postService.getAllSimplifiedPosts(offset, limit);
         logger.info("Retrieved {} simplified blog posts", response.getPosts().size());
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

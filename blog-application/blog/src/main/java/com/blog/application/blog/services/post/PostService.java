@@ -13,7 +13,7 @@ import java.util.List;
 
 public interface PostService {
     CreatedSimpleBlogPost createBlogPost(CreatePostRequest createPostRequest);
-    GetAllSimplifiedPost getAllSimplifiedPosts();
+    GetAllSimplifiedPost getAllSimplifiedPosts(int offset, int limit);
     UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest);
     Post addTagToPost(Long postId, Tag tag);
     Post removeTagFromPost(Post post);

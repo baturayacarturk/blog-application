@@ -18,4 +18,7 @@ public class GetAllSimplifiedPost {
 
     @ApiModelProperty(value = "List of simplified post details", example = "[{\"postId\":1, \"title\":\"Spring Boot Basics\", \"text\":\"Introduction to Spring Boot.\"}]")
     private List<SimplifiedPost> posts = new ArrayList<>();
+    private long totalPosts;
+    private int totalPages;
+    private int currentPage;
 }

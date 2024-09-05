@@ -3,13 +3,14 @@ package com.blog.application.blog.services.post;
 import com.blog.application.blog.dtos.common.ElasticTagDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.UserDto;
-import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.*;
+import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.responses.tag.TagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
+
 import com.blog.application.blog.entities.User;
 import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
@@ -17,11 +18,15 @@ import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
+
 import com.blog.application.blog.repositories.elastic.PostElasticRepository;
 import com.blog.application.blog.services.user.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.util.*;
@@ -59,6 +64,7 @@ public class PostServiceImpl implements PostService {
         Post post = createdPostRequestToPostEntity(createPostRequest, user.get());
         tagRepository.saveAll(post.getTags());
 
+
         Post savedPost = postRepository.save(post);
         ElasticPost elasticPost = new ElasticPost();
         elasticPost.setId(savedPost.getId());
@@ -68,6 +74,7 @@ public class PostServiceImpl implements PostService {
         elasticPost.setTags(convertToElasticTagDtoList(savedPost.getTags()));
 
         elasticRepository.save(elasticPost);
+
         CreatedSimpleBlogPost createdPostDto = new CreatedSimpleBlogPost();
         createdPostDto.setTitle(savedPost.getTitle());
         createdPostDto.setText(savedPost.getText());
@@ -80,13 +87,21 @@ public class PostServiceImpl implements PostService {
 
 
     @Override
-    public GetAllSimplifiedPost getAllSimplifiedPosts() {
-        List<SimplifiedPostProjection> simplifiedPostList = postRepository.getAllSimplifiedBlogPost();
-        List<SimplifiedPost> simplifiedPosts = simplifiedPostList.stream()
+    public GetAllSimplifiedPost getAllSimplifiedPosts(int offset, int limit) {
+        Pageable pageable = PageRequest.of(offset / limit, limit);
+
+        Page<SimplifiedPostProjection> page = postRepository.getAllSimplifiedBlogPost(pageable);
+
+        List<SimplifiedPost> simplifiedPosts = page.getContent().stream()
                 .map(projection -> new SimplifiedPost(projection.getTitle(), projection.getText()))
                 .collect(Collectors.toList());
 
-        return new GetAllSimplifiedPost(simplifiedPosts);
+        return new GetAllSimplifiedPost(
+                simplifiedPosts,
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber()
+        );
     }
 
 
