@@ -1,0 +1,21 @@
+{
+  "indices": {
+    "elastic_posts": {
+      "mappings": {
+        "properties": {
+          "id": { "type": "long" },
+          "title": { "type": "text", "analyzer": "standard" },
+          "text": { "type": "text", "analyzer": "standard" },
+          "userId": { "type": "long" },
+          "tags": {
+            "type": "nested",
+            "properties": {
+              "id": { "type": "long" },
+              "name": { "type": "text" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
