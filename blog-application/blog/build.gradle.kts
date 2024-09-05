@@ -47,6 +47,11 @@ dependencies {
     implementation("commons-io:commons-io:2.11.0")
     implementation("org.apache.commons:commons-lang3:3.13.0")
     implementation("org.apache.commons:commons-collections4:4.4")
+    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+    implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.10")
+
+    implementation("org.elasticsearch:elasticsearch:7.17.10")
+
 
     runtimeOnly("mysql:mysql-connector-java:8.0.33")
     compileOnly("org.projectlombok:lombok:1.18.24")
