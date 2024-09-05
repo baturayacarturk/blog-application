@@ -1,6 +1,8 @@
 package com.blog.application.blog.services.post;
 
+import com.blog.application.blog.dtos.common.ElasticTagDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.entities.Post;
@@ -18,5 +20,6 @@ public interface PostService {
     Post getPostEntity(Long postId);
     List<GetAllByTagId> getPostsByTagId(Long tagId);
     DeletedPostResponse deletePostById(Long postId);
+    List<SearchByKeywordResponse> searchByKeyword(String keyword);
 
 }

@@ -1,19 +1,23 @@
 package com.blog.application.blog.services.post;
 
+import com.blog.application.blog.dtos.common.ElasticTagDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.responses.tag.TagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.entities.User;
+import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
+import com.blog.application.blog.repositories.elastic.PostElasticRepository;
 import com.blog.application.blog.services.user.UserService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,12 +34,14 @@ public class PostServiceImpl implements PostService {
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
     private final UserService userService;
+    private final PostElasticRepository elasticRepository;
     private static final Logger logger = LogManager.getLogger(PostServiceImpl.class);
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserService userService) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserService userService, PostElasticRepository elasticRepository) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
         this.userService = userService;
+        this.elasticRepository = elasticRepository;
     }
 
     @Override
@@ -54,6 +60,14 @@ public class PostServiceImpl implements PostService {
         tagRepository.saveAll(post.getTags());
 
         Post savedPost = postRepository.save(post);
+        ElasticPost elasticPost = new ElasticPost();
+        elasticPost.setId(savedPost.getId());
+        elasticPost.setUserId(savedPost.getUser().getId());
+        elasticPost.setText(savedPost.getText());
+        elasticPost.setTitle(savedPost.getTitle());
+        elasticPost.setTags(convertToElasticTagDtoList(savedPost.getTags()));
+
+        elasticRepository.save(elasticPost);
         CreatedSimpleBlogPost createdPostDto = new CreatedSimpleBlogPost();
         createdPostDto.setTitle(savedPost.getTitle());
         createdPostDto.setText(savedPost.getText());
@@ -138,6 +152,14 @@ public class PostServiceImpl implements PostService {
         return response;
     }
 
+    @Override
+    public List<SearchByKeywordResponse> searchByKeyword(String keyword) {
+        List<ElasticPost> elasticPosts = elasticRepository.searchByKeyword(keyword);
+        return elasticPosts.stream()
+                .map(this::convertToSearchByKeywordResponse)
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     @Transactional
@@ -197,6 +219,22 @@ public class PostServiceImpl implements PostService {
         tagResponse.setName(tag.getName());
         tagResponse.setId(tag.getId());
         return tagResponse;
+    }
+
+    private List<ElasticTagDto> convertToElasticTagDtoList(Set<Tag> tags) {
+        return tags.stream()
+                .map(tag -> new ElasticTagDto(tag.getId(), tag.getName()))
+                .collect(Collectors.toList());
+    }
+
+    private SearchByKeywordResponse convertToSearchByKeywordResponse(ElasticPost elasticPost) {
+        SearchByKeywordResponse searchByKeywordResponse = new SearchByKeywordResponse();
+        searchByKeywordResponse.setId(elasticPost.getId());
+        searchByKeywordResponse.setUserId(elasticPost.getUserId());
+        searchByKeywordResponse.setTitle(elasticPost.getTitle());
+        searchByKeywordResponse.setText(elasticPost.getText());
+        searchByKeywordResponse.setTags(elasticPost.getTags());
+        return searchByKeywordResponse;
     }
 
 }

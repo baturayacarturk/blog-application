@@ -24,13 +24,11 @@ public class Post extends BaseEntity {
     private String title;
 
     @Lob
-    //TODO change text field to summary by this does not make sense
     private String text;
 
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    //TODO can't be null after jwt
     private User user;
 
     @ManyToMany

@@ -2,6 +2,7 @@ package com.blog.application.blog.controllers;
 
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
 import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
 import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
@@ -137,5 +138,10 @@ public class PostController {
         DeletedPostResponse response = postService.deletePostById(postId);
         logger.info("Post with ID: {} deleted successfully", postId);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    @GetMapping("/search-by-keyword")
+    public ResponseEntity<List<SearchByKeywordResponse>> searchPosts(@RequestParam String keyword) {
+        List<SearchByKeywordResponse> searchResults = postService.searchByKeyword(keyword);
+        return ResponseEntity.ok(searchResults);
     }
 }
