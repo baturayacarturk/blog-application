@@ -36,7 +36,7 @@ public class TagServiceImpl implements TagService {
         logger.info("Adding tag to post. Post ID: {}, Tag Name: {}", postId, tagDto.getName());
         Tag tag = new Tag();
         Post post = postService.getPostEntity(postId);
-        if(post == null){
+        if (post == null) {
             String errorMessage = "Post could not be found with ID: " + postId;
             logger.error(errorMessage);
             throw new BusinessException(errorMessage);
@@ -55,7 +55,7 @@ public class TagServiceImpl implements TagService {
     public TagDto removeTag(Long postId, Long tagId) {
         logger.info("Removing tag from post. Post ID: {}, Tag ID: {}", postId, tagId);
         Post post = postService.getPostEntity(postId);
-        if(post == null){
+        if (post == null) {
             String errorMessage = "Post could not be found with ID: " + postId;
             logger.error(errorMessage);
             throw new BusinessException(errorMessage);
@@ -72,23 +72,5 @@ public class TagServiceImpl implements TagService {
         tagDto.setName(tagToRemove.get().getName());
         logger.info("Tag successfully removed from post. Post ID: {}, Tag ID: {}", postId, tagId);
         return tagDto;
-    }
-
-    private static User extractUserNameFromSecurityContext() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof User) {
-            return (User) principal;
-        } else if (principal instanceof Optional<?>) {
-            Optional<?> optionalPrincipal = (Optional<?>) principal;
-            if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
-                return (User) optionalPrincipal.get();
-            } else {
-                throw new IllegalStateException("Unexpected principal type");
-            }
-        } else {
-            throw new IllegalStateException("Principal is not of type User or Optional<User>");
-        }
     }
 }

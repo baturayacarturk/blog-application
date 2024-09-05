@@ -2,26 +2,22 @@ package com.blog.application.blog.services.post;
 
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.UserDto;
+import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.*;
-import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.responses.tag.TagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-
 import com.blog.application.blog.entities.User;
 import com.blog.application.blog.exceptions.types.BusinessException;
+import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
-
 import com.blog.application.blog.services.user.UserService;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.util.*;
@@ -44,7 +40,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public CreatedSimpleBlogPost createBlogPost(CreatePostRequest createPostRequest) {
-        User extractedUser = extractUserNameFromSecurityContext();
+        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
         Optional<User> user = userService.findByUsername(extractedUser.getUsername());
         if (user.isEmpty()) {
             logger.error("User not found with username: {}", extractedUser.getUsername());
@@ -83,7 +79,7 @@ public class PostServiceImpl implements PostService {
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
         Post post = postRepository.getPostEntity(postId);
-        User extractedUser = extractUserNameFromSecurityContext();
+        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
         if (!extractedUser.getUsername().equals(post.getUser().getUsername())) {
             logger.error("Unauthorized attempt to add tag to post by user: {}", extractedUser.getUsername());
             throw new BusinessException("User not found");
@@ -116,7 +112,6 @@ public class PostServiceImpl implements PostService {
     }
 
 
-
     @Override
     @Transactional
     public DeletedPostResponse deletePostById(Long postId) {
@@ -125,7 +120,7 @@ public class PostServiceImpl implements PostService {
             logger.error("Post not found with id: {}", postId);
             throw new BusinessException("Post not found");
         }
-        User currentUser = extractUserNameFromSecurityContext();
+        User currentUser = SecurityUtils.extractUserFromSecurityContext();
         Optional<UserDto> userDto = userService.findOnlyUserById(currentUser.getId());
         if (!userDto.isPresent()) {
             logger.error("User not found with id: {}", currentUser.getId());
@@ -147,7 +142,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
-        User extractedUser = extractUserNameFromSecurityContext();
+        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
         Post post = postRepository.getPostEntity(updatePostRequest.getId());
         if (!post.getUser().getId().equals(extractedUser.getId())) {
             logger.error("Unauthorized attempt to update post with id: {} by user: {}", updatePostRequest.getId(), extractedUser.getUsername());
@@ -204,21 +199,4 @@ public class PostServiceImpl implements PostService {
         return tagResponse;
     }
 
-    private static User extractUserNameFromSecurityContext() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof User) {
-            return (User) principal;
-        } else if (principal instanceof Optional<?>) {
-            Optional<?> optionalPrincipal = (Optional<?>) principal;
-            if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
-                return (User) optionalPrincipal.get();
-            } else {
-                throw new IllegalStateException("Unexpected principal type");
-            }
-        } else {
-            throw new IllegalStateException("Principal is not of type User or Optional<User>");
-        }
-    }
 }
