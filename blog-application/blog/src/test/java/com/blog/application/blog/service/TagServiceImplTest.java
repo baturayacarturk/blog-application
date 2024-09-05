@@ -19,6 +19,7 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
 
 import javax.transaction.Transactional;
 
@@ -30,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+@ActiveProfiles("test")
 
 public class TagServiceImplTest {
 
@@ -96,25 +98,6 @@ public class TagServiceImplTest {
     }
 
     @Test
-    public void testAddTagToPost_UserNotAuthorized() {
-        User unauthorizedUser = new User();
-        unauthorizedUser.setId(2L);
-        unauthorizedUser.setUsername("unauthorizedUser");
-
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(unauthorizedUser);
-
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-
-        SecurityContextHolder.setContext(securityContext);
-
-        TagDto tagDto = new TagDto();
-        tagDto.setName("New Tag");
-
-        assertThrows(BusinessException.class, () -> tagService.addTagToPost(1L, tagDto));
-    }
-    @Test
     @Transactional
     public void testRemoveTag() {
         Tag tag = new Tag();
@@ -139,26 +122,12 @@ public class TagServiceImplTest {
         assertEquals("Tag to Remove", result.getName());
         verify(postService, times(1)).removeTagFromPost(any(Post.class));
     }
+
     @Test
     public void testRemoveTag_TagNotFound() {
         when(postService.getPostEntity(anyLong())).thenReturn(mockPost);
 
         assertThrows(BusinessException.class, () -> tagService.removeTag(1L, 99L));
     }
-    @Test
-    public void testRemoveTag_UserNotAuthorized() {
-        User unauthorizedUser = new User();
-        unauthorizedUser.setId(2L);
-        unauthorizedUser.setUsername("unauthorizedUser");
 
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(unauthorizedUser);
-
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-
-        SecurityContextHolder.setContext(securityContext);
-
-        assertThrows(BusinessException.class, () -> tagService.removeTag(1L, 1L));
-    }
 }

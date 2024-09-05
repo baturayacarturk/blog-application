@@ -1,6 +1,7 @@
 package com.blog.application.blog.services.post;
 
 import com.blog.application.blog.dtos.common.SimplifiedPost;
+import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
@@ -19,6 +20,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.transaction.Transactional;
 import java.util.*;
@@ -31,6 +34,7 @@ public class PostServiceImpl implements PostService {
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
     private final UserService userService;
+    private static final Logger logger = LogManager.getLogger(PostServiceImpl.class);
 
     public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserService userService) {
         this.postRepository = postRepository;
@@ -43,9 +47,11 @@ public class PostServiceImpl implements PostService {
         User extractedUser = extractUserNameFromSecurityContext();
         Optional<User> user = userService.findByUsername(extractedUser.getUsername());
         if (user.isEmpty()) {
+            logger.error("User not found with username: {}", extractedUser.getUsername());
             throw new BusinessException("User not found");
         }
         if (!Objects.equals(user.get().getId(), createPostRequest.getUserId())) {
+            logger.error("Unauthorized access attempt by user: {} to create post for userId: {}", extractedUser.getUsername(), createPostRequest.getUserId());
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
         Post post = createdPostRequestToPostEntity(createPostRequest, user.get());
@@ -79,6 +85,7 @@ public class PostServiceImpl implements PostService {
         Post post = postRepository.getPostEntity(postId);
         User extractedUser = extractUserNameFromSecurityContext();
         if (!extractedUser.getUsername().equals(post.getUser().getUsername())) {
+            logger.error("Unauthorized attempt to add tag to post by user: {}", extractedUser.getUsername());
             throw new BusinessException("User not found");
         }
         post.getTags().add(tag);
@@ -103,38 +110,32 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<GetAllByTagId> getPostsByTagId(Long tagId) {
         List<Post> postList = postRepository.getPostEntityByTagId(tagId);
-        User extractedUser = extractUserNameFromSecurityContext();
-        if (!postList.get(0).getUser().getId().equals(extractedUser.getId())) {
-            throw new BusinessException("You are accessing a resource that you are not permitted");
-        }
-
         return postList.stream()
                 .map(this::convertToGetAllByTagId)
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<Post> getAllPostEntities() {
-        return getAllPostEntities();
-    }
+
 
     @Override
     @Transactional
     public DeletedPostResponse deletePostById(Long postId) {
         Post post = postRepository.getPostEntity(postId);
         if (post == null) {
+            logger.error("Post not found with id: {}", postId);
             throw new BusinessException("Post not found");
         }
         User currentUser = extractUserNameFromSecurityContext();
-        Optional<User> user = userService.findByUsername(currentUser.getUsername());
-        if (!user.isPresent()) {
+        Optional<UserDto> userDto = userService.findOnlyUserById(currentUser.getId());
+        if (!userDto.isPresent()) {
+            logger.error("User not found with id: {}", currentUser.getId());
             throw new BusinessException("User not found");
         }
-        boolean matchedPost = user.get().getPosts().stream().anyMatch(p -> p.getId().equals(postId));
+        boolean matchedPost = post.getUser().getId().equals(userDto.get().getId());
         if (!matchedPost) {
+            logger.error("Unauthorized attempt to delete post with id: {} by user: {}", postId, currentUser.getUsername());
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
-        user.get().getPosts().remove(post);
         post.getTags().clear();
         postRepository.delete(post);
         DeletedPostResponse response = new DeletedPostResponse();
@@ -149,6 +150,7 @@ public class PostServiceImpl implements PostService {
         User extractedUser = extractUserNameFromSecurityContext();
         Post post = postRepository.getPostEntity(updatePostRequest.getId());
         if (!post.getUser().getId().equals(extractedUser.getId())) {
+            logger.error("Unauthorized attempt to update post with id: {} by user: {}", updatePostRequest.getId(), extractedUser.getUsername());
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
 
@@ -204,7 +206,19 @@ public class PostServiceImpl implements PostService {
 
     private static User extractUserNameFromSecurityContext() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principalUser = authentication.getPrincipal();
-        return (User)principalUser;
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof User) {
+            return (User) principal;
+        } else if (principal instanceof Optional<?>) {
+            Optional<?> optionalPrincipal = (Optional<?>) principal;
+            if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
+                return (User) optionalPrincipal.get();
+            } else {
+                throw new IllegalStateException("Unexpected principal type");
+            }
+        } else {
+            throw new IllegalStateException("Principal is not of type User or Optional<User>");
+        }
     }
 }

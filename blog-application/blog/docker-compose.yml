@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: blogdb
+      MYSQL_USER: bloguser
+      MYSQL_PASSWORD: baturayacarturk
+      MYSQL_ROOT_PASSWORD: verypowerfulpassword
+    volumes:
+      - ./src/main/resources/scripts/mysql.sql:/docker-entrypoint-mysql.d/mysql.sql
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+
+  app:
+    build: .
+    container_name: blog-app
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/blogdb?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: bloguser
+      SPRING_DATASOURCE_PASSWORD: baturayacarturk
+      SPRING_PROFILES_ACTIVE: default
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:

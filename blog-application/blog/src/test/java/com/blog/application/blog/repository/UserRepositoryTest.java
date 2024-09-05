@@ -1,5 +1,6 @@
 package com.blog.application.blog.repository;
 
+import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.entities.User;
 import com.blog.application.blog.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -7,11 +8,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ActiveProfiles("test")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 public class UserRepositoryTest {
@@ -71,5 +74,18 @@ public class UserRepositoryTest {
         Optional<User> foundUser = userRepository.findByUserId(999L);
 
         assertFalse(foundUser.isPresent());
+    }
+    @Test
+    public void testFindOnlyUser_UserExists() {
+        User user = new User();
+        user.setUsername("testUser");
+        user.setPassword("password");
+        user.setDisplayName("Test User");
+        User savedUser = userRepository.save(user);
+
+        Optional<UserDto> result = userRepository.findOnlyUser(savedUser.getId());
+
+        UserDto expectedUserDto = new UserDto(savedUser.getId(), "testUser");
+         assertEquals(Optional.of(expectedUserDto), result);
     }
 }

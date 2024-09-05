@@ -3,6 +3,7 @@ package com.blog.application.blog.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.user.AuthenticationRequest;
 import com.blog.application.blog.dtos.requests.user.RegisterRequest;
 import com.blog.application.blog.dtos.responses.user.AuthenticationResponse;
@@ -21,9 +22,11 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Optional;
+@ActiveProfiles("test")
 
 public class UserServiceImplTest {
 
@@ -176,5 +179,15 @@ public class UserServiceImplTest {
         assertTrue(token1.isRevoked());
         assertTrue(token2.isExpired());
         assertTrue(token2.isRevoked());
+    }
+    @Test
+    public void testFindOnlyUserById_UserExists() {
+        Long userId = 1L;
+        UserDto mockUserDto = new UserDto();
+        mockUserDto.setId(userId);
+        mockUserDto.setUsername("testUser");
+        when(userRepository.findOnlyUser(userId)).thenReturn(Optional.of(mockUserDto));
+        Optional<UserDto> result = userService.findOnlyUserById(userId);
+        assertEquals(Optional.of(mockUserDto), result);
     }
 }

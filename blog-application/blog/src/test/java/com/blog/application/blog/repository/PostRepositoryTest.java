@@ -4,31 +4,21 @@ import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import com.blog.application.blog.entities.Post;
-
-import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.projection.SimplifiedPostProjection;
-import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-@Nested
+import static org.junit.jupiter.api.Assertions.*;
+@ActiveProfiles("test")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 class PostRepositoryTest {
@@ -38,7 +28,7 @@ class PostRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
-
+    @Autowired
     private TagRepository tagRepository;
     private Long tag1Id;
     private Long tag2Id;
