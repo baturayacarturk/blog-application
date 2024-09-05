@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.HashSet;
@@ -64,7 +66,9 @@ class PostRepositoryTest {
 
     @Test
     public void testGetAllSimplifiedBlogPost() {
-        List<SimplifiedPostProjection> projections = postRepository.getAllSimplifiedBlogPost();
+        Pageable pageable = PageRequest.of(0 / 5, 5);
+
+        List<SimplifiedPostProjection> projections = postRepository.getAllSimplifiedBlogPost(pageable).stream().toList();
 
         assertNotNull(projections);
         assertEquals(2, projections.size());
