@@ -6,6 +6,9 @@ plugins {
     id("org.springframework.boot") version "2.7.18"
     id("io.spring.dependency-management") version "1.1.6"
     id("org.flywaydb.flyway") version "9.8.2"
+    id("jacoco")
+    id("org.sonarqube") version "4.2.1.3168"
+
 }
 
 group = "com.blog.application"
@@ -78,5 +81,18 @@ tasks.test {
     testLogging {
         events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
         exceptionFormat = TestExceptionFormat.FULL
+    }
+}
+sonar {
+    properties {
+        property("sonar.projectKey", "blog")
+        property("sonar.projectName", "My Blog Project")
+        property("sonar.host.url", "http://localhost:9000")
+        property("sonar.login", "admin")
+        property("sonar.password", "admin")
+        property("sonar.sourceEncoding", "UTF-8")
+        property("sonar.sources", "src/main/java")
+        property("sonar.tests", "src/test/java")
+        property("sonar.java.binaries", layout.buildDirectory.dir("classes/java/main").get().asFile.absolutePath)
     }
 }
