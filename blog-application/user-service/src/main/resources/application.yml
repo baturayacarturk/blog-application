@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: user-service
+
+server:
+  port: 8081
+
+secret:
+  key: "47A52F686696CABA4A9824E6177DFFFF5161ASDFDS1D2DS"
