@@ -27,6 +27,7 @@ configurations.all {
 
 }
 
+extra["springCloudVersion"] = "2021.0.8"
 
 repositories {
     mavenCentral()
@@ -38,13 +39,14 @@ dependencies {
     implementation("com.h2database:h2")
     implementation("mysql:mysql-connector-java:8.0.33")
     implementation("org.flywaydb:flyway-mysql")
+    implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
     implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
     implementation("io.jsonwebtoken:jjwt-jackson:0.11.5")
     implementation("io.springfox:springfox-swagger2:3.0.0")
     implementation("io.springfox:springfox-swagger-ui:3.0.0")
-    implementation("io.springfox:springfox-boot-starter:3.0.0")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.slf4j:slf4j-api:1.7.36")
     implementation("commons-io:commons-io:2.11.0")
@@ -71,7 +73,11 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+    }
+}
 tasks.withType<Test> {
     useJUnitPlatform()
     doNotTrackState("can't run a test twice without clean")
