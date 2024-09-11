@@ -3,6 +3,7 @@ package com.blog.application.blog;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 /**
  * The main entry point of the Blog Application.
@@ -18,14 +19,15 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @see <a href="https://swagger.io/tools/swagger-ui/">Swagger UI Documentation</a>
  */
 @SpringBootApplication
+@EnableFeignClients
 public class BlogApplication {
 
-	/**
-	 * The main method which is the entry point of the Spring Boot application.
-	 *
-	 * @param args command line arguments
-	 */
-	public static void main(String[] args) {
-		SpringApplication.run(BlogApplication.class, args);
-	}
+    /**
+     * The main method which is the entry point of the Spring Boot application.
+     *
+     * @param args command line arguments
+     */
+    public static void main(String[] args) {
+        SpringApplication.run(BlogApplication.class, args);
+    }
 }
