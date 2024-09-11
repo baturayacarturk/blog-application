@@ -6,11 +6,9 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import user.user_service.dtos.AuthenticationDto;
+import user.user_service.dtos.UserDto;
 import user.user_service.services.UserService;
 
 @RestController
@@ -36,5 +34,10 @@ public class UserController {
             @RequestBody AuthenticationDto authenticationRequest) {
         AuthenticationDto authenticationResponse = userService.authenticate(authenticationRequest);
         return new ResponseEntity<>(authenticationResponse, HttpStatus.OK);
+    }
+    @GetMapping("/getUserDetails")
+    public ResponseEntity<UserDto> getUserDetails(){
+        UserDto user = userService.getUserDetails();
+        return new ResponseEntity<>(user,HttpStatus.OK);
     }
 }

@@ -5,6 +5,9 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import user.user_service.dtos.AuthenticationDto;
@@ -96,6 +99,33 @@ public class UserServiceImpl implements UserService {
     public Optional<UserDto> findOnlyUserById(Long userId) {
         //TODO can be added validation and return without optional
         return userRepository.findOnlyUser(userId);
+    }
+
+    @Override
+    public UserDto getUserDetails() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = authentication.getPrincipal();
+        User user;
+        if (principal instanceof User) {
+            user = (User) principal;
+        } else if (principal instanceof Optional<?>) {
+            Optional<?> optionalPrincipal = (Optional<?>) principal;
+            if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
+                user = (User) optionalPrincipal.get();
+            } else {
+                throw new IllegalStateException("Unexpected principal type");
+            }
+        } else {
+            throw new IllegalStateException("Principal is not of type User or Optional<User>");
+        }
+        var currentUser = findByUsername(user.getUsername());
+        if(currentUser.isEmpty()){
+            throw new UsernameNotFoundException("User not found");
+        }
+        UserDto userDto = new UserDto();
+        userDto.setId(currentUser.get().getId());
+        userDto.setUsername(currentUser.get().getUsername());
+        return userDto;
     }
 
     private void revokeAllUserTokens(User user) {

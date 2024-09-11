@@ -18,4 +18,6 @@ public interface UserService {
     //Without loading entire User but only user
     Optional<UserDto> findOnlyUserById(Long userId);
 
+    UserDto getUserDetails();
+
 }
