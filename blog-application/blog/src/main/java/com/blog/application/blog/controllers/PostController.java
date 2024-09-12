@@ -2,6 +2,7 @@ package com.blog.application.blog.controllers;
 
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
 import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
 import com.blog.application.blog.dtos.responses.post.GetAllSimplifiedPost;
@@ -69,9 +70,11 @@ public class PostController {
             @ApiResponse(code = 200, message = "Posts retrieved successfully", response = GetAllSimplifiedPost.class)
     })
     @GetMapping(path = "/get-simplified-posts")
-    public ResponseEntity<GetAllSimplifiedPost> getAllSimplifiedPosts() {
-        logger.info("Received request to retrieve all simplified blog posts");
-        GetAllSimplifiedPost response = postService.getAllSimplifiedPosts();
+    public ResponseEntity<GetAllSimplifiedPost> getAllSimplifiedPosts(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit) {
+        logger.info("Received request to retrieve simplified blog posts with offset {} and limit {}", offset, limit);
+        GetAllSimplifiedPost response = postService.getAllSimplifiedPosts(offset, limit);
         logger.info("Retrieved {} simplified blog posts", response.getPosts().size());
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -137,5 +140,10 @@ public class PostController {
         DeletedPostResponse response = postService.deletePostById(postId);
         logger.info("Post with ID: {} deleted successfully", postId);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    @GetMapping("/search-by-keyword")
+    public ResponseEntity<List<SearchByKeywordResponse>> searchPosts(@RequestParam String keyword) {
+        List<SearchByKeywordResponse> searchResults = postService.searchByKeyword(keyword);
+        return ResponseEntity.ok(searchResults);
     }
 }

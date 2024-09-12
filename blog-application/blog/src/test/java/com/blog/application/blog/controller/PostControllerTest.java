@@ -156,7 +156,7 @@ public class PostControllerTest {
 
         GetAllSimplifiedPost response = new GetAllSimplifiedPost();
         response.setPosts(List.of(simplifiedPost, simplifiedPost2));
-        when(postService.getAllSimplifiedPosts()).thenReturn(response);
+        when(postService.getAllSimplifiedPosts(0,10)).thenReturn(response);
 
         ResultActions resultActions = mockMvc.perform(get("/api/posts/get-simplified-posts")
                 .accept(MediaType.APPLICATION_JSON));

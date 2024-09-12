@@ -1,8 +1,10 @@
 package com.blog.application.blog.services.post;
 
+import com.blog.application.blog.dtos.common.ElasticTagDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.responses.tag.TagResponse;
@@ -10,16 +12,19 @@ import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
 
 import com.blog.application.blog.entities.User;
+import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
+import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 
+import com.blog.application.blog.repositories.elastic.PostElasticRepository;
 import com.blog.application.blog.services.user.UserService;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
-
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,17 +39,19 @@ public class PostServiceImpl implements PostService {
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
     private final UserService userService;
+    private final PostElasticRepository elasticRepository;
     private static final Logger logger = LogManager.getLogger(PostServiceImpl.class);
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserService userService) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserService userService, PostElasticRepository elasticRepository) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
         this.userService = userService;
+        this.elasticRepository = elasticRepository;
     }
 
     @Override
     public CreatedSimpleBlogPost createBlogPost(CreatePostRequest createPostRequest) {
-        User extractedUser = extractUserNameFromSecurityContext();
+        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
         Optional<User> user = userService.findByUsername(extractedUser.getUsername());
         if (user.isEmpty()) {
             logger.error("User not found with username: {}", extractedUser.getUsername());
@@ -57,7 +64,17 @@ public class PostServiceImpl implements PostService {
         Post post = createdPostRequestToPostEntity(createPostRequest, user.get());
         tagRepository.saveAll(post.getTags());
 
+
         Post savedPost = postRepository.save(post);
+        ElasticPost elasticPost = new ElasticPost();
+        elasticPost.setId(savedPost.getId());
+        elasticPost.setUserId(savedPost.getUser().getId());
+        elasticPost.setText(savedPost.getText());
+        elasticPost.setTitle(savedPost.getTitle());
+        elasticPost.setTags(convertToElasticTagDtoList(savedPost.getTags()));
+
+        elasticRepository.save(elasticPost);
+
         CreatedSimpleBlogPost createdPostDto = new CreatedSimpleBlogPost();
         createdPostDto.setTitle(savedPost.getTitle());
         createdPostDto.setText(savedPost.getText());
@@ -70,20 +87,28 @@ public class PostServiceImpl implements PostService {
 
 
     @Override
-    public GetAllSimplifiedPost getAllSimplifiedPosts() {
-        List<SimplifiedPostProjection> simplifiedPostList = postRepository.getAllSimplifiedBlogPost();
-        List<SimplifiedPost> simplifiedPosts = simplifiedPostList.stream()
+    public GetAllSimplifiedPost getAllSimplifiedPosts(int offset, int limit) {
+        Pageable pageable = PageRequest.of(offset / limit, limit);
+
+        Page<SimplifiedPostProjection> page = postRepository.getAllSimplifiedBlogPost(pageable);
+
+        List<SimplifiedPost> simplifiedPosts = page.getContent().stream()
                 .map(projection -> new SimplifiedPost(projection.getTitle(), projection.getText()))
                 .collect(Collectors.toList());
 
-        return new GetAllSimplifiedPost(simplifiedPosts);
+        return new GetAllSimplifiedPost(
+                simplifiedPosts,
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber()
+        );
     }
 
 
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
         Post post = postRepository.getPostEntity(postId);
-        User extractedUser = extractUserNameFromSecurityContext();
+        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
         if (!extractedUser.getUsername().equals(post.getUser().getUsername())) {
             logger.error("Unauthorized attempt to add tag to post by user: {}", extractedUser.getUsername());
             throw new BusinessException("User not found");
@@ -116,7 +141,6 @@ public class PostServiceImpl implements PostService {
     }
 
 
-
     @Override
     @Transactional
     public DeletedPostResponse deletePostById(Long postId) {
@@ -125,7 +149,7 @@ public class PostServiceImpl implements PostService {
             logger.error("Post not found with id: {}", postId);
             throw new BusinessException("Post not found");
         }
-        User currentUser = extractUserNameFromSecurityContext();
+        User currentUser = SecurityUtils.extractUserFromSecurityContext();
         Optional<UserDto> userDto = userService.findOnlyUserById(currentUser.getId());
         if (!userDto.isPresent()) {
             logger.error("User not found with id: {}", currentUser.getId());
@@ -143,11 +167,19 @@ public class PostServiceImpl implements PostService {
         return response;
     }
 
+    @Override
+    public List<SearchByKeywordResponse> searchByKeyword(String keyword) {
+        List<ElasticPost> elasticPosts = elasticRepository.searchByKeyword(keyword);
+        return elasticPosts.stream()
+                .map(this::convertToSearchByKeywordResponse)
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     @Transactional
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
-        User extractedUser = extractUserNameFromSecurityContext();
+        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
         Post post = postRepository.getPostEntity(updatePostRequest.getId());
         if (!post.getUser().getId().equals(extractedUser.getId())) {
             logger.error("Unauthorized attempt to update post with id: {} by user: {}", updatePostRequest.getId(), extractedUser.getUsername());
@@ -204,21 +236,20 @@ public class PostServiceImpl implements PostService {
         return tagResponse;
     }
 
-    private static User extractUserNameFromSecurityContext() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof User) {
-            return (User) principal;
-        } else if (principal instanceof Optional<?>) {
-            Optional<?> optionalPrincipal = (Optional<?>) principal;
-            if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
-                return (User) optionalPrincipal.get();
-            } else {
-                throw new IllegalStateException("Unexpected principal type");
-            }
-        } else {
-            throw new IllegalStateException("Principal is not of type User or Optional<User>");
-        }
+    private List<ElasticTagDto> convertToElasticTagDtoList(Set<Tag> tags) {
+        return tags.stream()
+                .map(tag -> new ElasticTagDto(tag.getId(), tag.getName()))
+                .collect(Collectors.toList());
     }
+
+    private SearchByKeywordResponse convertToSearchByKeywordResponse(ElasticPost elasticPost) {
+        SearchByKeywordResponse searchByKeywordResponse = new SearchByKeywordResponse();
+        searchByKeywordResponse.setId(elasticPost.getId());
+        searchByKeywordResponse.setUserId(elasticPost.getUserId());
+        searchByKeywordResponse.setTitle(elasticPost.getTitle());
+        searchByKeywordResponse.setText(elasticPost.getText());
+        searchByKeywordResponse.setTags(elasticPost.getTags());
+        return searchByKeywordResponse;
+    }
+
 }

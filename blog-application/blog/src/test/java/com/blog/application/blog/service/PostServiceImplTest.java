@@ -1,18 +1,23 @@
 package com.blog.application.blog.service;
 
-import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.common.UserDto;
-import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
-import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
+import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
+import com.blog.application.blog.dtos.responses.post.DeletedPostResponse;
+import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
+import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
+import com.blog.application.blog.entities.User;
+import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
 import com.blog.application.blog.repositories.UserRepository;
+import com.blog.application.blog.repositories.elastic.PostElasticRepository;
 import com.blog.application.blog.services.post.PostServiceImpl;
 import com.blog.application.blog.services.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +26,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,12 +42,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
-
-import com.blog.application.blog.entities.User;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
 
@@ -47,6 +54,8 @@ public class PostServiceImplTest {
     private TagRepository tagRepository;
     @Mock
     private UserService userService;
+    @Mock
+    private PostElasticRepository postElasticRepository;
 
     @InjectMocks
     private PostServiceImpl postService;
@@ -106,6 +115,8 @@ public class PostServiceImplTest {
         assertNotNull(result);
         assertEquals("Test Title", result.getTitle());
         assertEquals("Test Text", result.getText());
+        verify(postElasticRepository, times(1)).save(any(ElasticPost.class));
+
     }
     @Test
     public void testCreateBlogPost_UserNotFound() {
@@ -147,15 +158,19 @@ public class PostServiceImplTest {
         SimplifiedPostProjection projection = mock(SimplifiedPostProjection.class);
         when(projection.getTitle()).thenReturn("Title");
         when(projection.getText()).thenReturn("Text");
+        Pageable pageable = PageRequest.of(0 , 3);
 
         List<SimplifiedPostProjection> projections = Collections.singletonList(projection);
-        when(postRepository.getAllSimplifiedBlogPost()).thenReturn(projections);
+        Page<SimplifiedPostProjection> page = new PageImpl<>(projections, pageable, projections.size());
 
-        GetAllSimplifiedPost result = postService.getAllSimplifiedPosts();
+        when(postRepository.getAllSimplifiedBlogPost(pageable)).thenReturn(page);
+        Page<SimplifiedPostProjection> resultPage = postRepository.getAllSimplifiedBlogPost(pageable);
+        List<SimplifiedPostProjection> result = resultPage.getContent();
 
         assertNotNull(result);
-        assertEquals(1, result.getPosts().size());
-        SimplifiedPost simplifiedPost = result.getPosts().get(0);
+        assertEquals(1, result.size());
+
+        SimplifiedPostProjection simplifiedPost = result.get(0);
         assertEquals("Title", simplifiedPost.getTitle());
         assertEquals("Text", simplifiedPost.getText());
     }
