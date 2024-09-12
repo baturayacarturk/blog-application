@@ -7,13 +7,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import user.user_service.dtos.AuthenticationDto;
 import user.user_service.dtos.UserDto;
 import user.user_service.entities.Token;
 import user.user_service.entities.User;
-import user.user_service.exceptions.types.BusinessException;
 import user.user_service.jwt.JwtService;
 import user.user_service.repositories.TokenRepository;
 import user.user_service.repositories.UserRepository;
@@ -113,14 +113,14 @@ public class UserServiceImpl implements UserService {
             if (optionalPrincipal.isPresent() && optionalPrincipal.get() instanceof User) {
                 user = (User) optionalPrincipal.get();
             } else {
-                throw new BusinessException("User not found");
+                throw new IllegalStateException("Unexpected principal type");
             }
         } else {
-            throw new BusinessException("User not found");
+            throw new IllegalStateException("Principal is not of type User or Optional<User>");
         }
         var currentUser = findByUsername(user.getUsername());
         if (currentUser.isEmpty()) {
-            throw new BusinessException("User not found");
+            throw new UsernameNotFoundException("User not found");
         }
         UserDto userDto = new UserDto();
         userDto.setId(currentUser.get().getId());
