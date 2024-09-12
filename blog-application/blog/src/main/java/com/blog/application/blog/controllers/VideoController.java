@@ -43,7 +43,7 @@ public class VideoController {
             @PathVariable Long videoId,
             @RequestParam("postId") Long postId) {
         videoService.removeVideoFromPost(videoId, postId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/original")
