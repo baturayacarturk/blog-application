@@ -1,0 +1,54 @@
+
+services:
+  mysql:
+    extends:
+      file: databases.yml
+      service: mysql
+
+  postgres:
+    extends:
+      file: databases.yml
+      service: postgres
+
+  elasticsearch:
+    extends:
+      file: databases.yml
+      service: elasticsearch
+  kibana:
+    extends:
+      file: services.yml
+      service: kibana
+
+  sonarqube:
+    extends:
+      file: services.yml
+      service: sonarqube
+  eurekaserver:
+    extends:
+      file: services.yml
+      service: eurekaserver
+
+  blog-service:
+    extends:
+      file: services.yml
+      service: blog-service
+
+  user-service:
+    extends:
+      file: services.yml
+      service: user-service
+
+
+
+volumes:
+  mysql-data:
+  postgres_data:
+  elasticsearch-data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+
+
+networks:
+  microservices-network:
+    driver: bridge

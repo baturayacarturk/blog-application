@@ -38,6 +38,8 @@ management:
 
 eureka:
   client:
+    fetchRegistry: true
+    registerWithEureka: true
     serviceUrl:
       defaultZone: http://localhost:8070/eureka/
   instance:
@@ -51,3 +53,5 @@ info:
 
 secret:
   key: "47A52F686696CABA4A9824E6177DFFFF5161ASDFDS1D2D"
+
+

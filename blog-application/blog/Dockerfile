@@ -7,7 +7,7 @@ COPY gradle ./gradle
 
 COPY src ./src
 
-COPY src/main/resources/application.properties ./
+COPY src/main/resources/application.yml ./
 COPY src/main/resources/index-creation-script.json /app/index-creation-script.json
 RUN ./gradlew build -x test
 
