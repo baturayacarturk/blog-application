@@ -38,7 +38,7 @@ public class ImageController {
     @DeleteMapping("/{imageId}")
     public ResponseEntity<Void> removeImageFromPost(@PathVariable Long imageId, @RequestParam Long postId) {
         imageService.removeImageFromPost(imageId, postId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/original")

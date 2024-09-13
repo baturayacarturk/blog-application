@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: user_service_db
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: bacarturk
+      POSTGRES_PASSWORD: bacarturk
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

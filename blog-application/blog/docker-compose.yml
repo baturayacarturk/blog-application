@@ -68,22 +68,7 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
     ports:
       - "9000:9000"
-  app:
-    build: .
-    container_name: blog-app
-    depends_on:
-      mysql:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/blogdb?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: bloguser
-      SPRING_DATASOURCE_PASSWORD: baturayacarturk
-      SPRING_PROFILES_ACTIVE: default
-      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
-    ports:
-      - "8080:8080"
+
 
 volumes:
   mysql-data:

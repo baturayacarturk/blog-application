@@ -2,17 +2,17 @@ package com.blog.application.blog.services.image;
 
 import com.blog.application.blog.dtos.common.ResourceResponse;
 import com.blog.application.blog.dtos.common.VersionResponse;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.dtos.responses.image.GetAllImagesResponse;
 import com.blog.application.blog.dtos.responses.image.UploadedImageResponse;
 import com.blog.application.blog.entities.Image;
 import com.blog.application.blog.entities.ImageVersion;
 import com.blog.application.blog.entities.Post;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.enums.StorageType;
 import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.repositories.ImageRepository;
 import com.blog.application.blog.repositories.ImageVersionRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.storage.FileStorageService;
 import org.apache.commons.collections4.CollectionUtils;
@@ -39,27 +39,29 @@ public class ImageServiceImpl implements ImageService {
     private final ImageVersionRepository imageVersionRepository;
     private final FileStorageService fileStorageService;
     private final PostService postService;
+    private final UserFeignClient userFeignClient;
     private final static String ORIGINAL = "original";
 
     public ImageServiceImpl(ImageRepository imageRepository, ImageVersionRepository imageVersionRepository,
-                            FileStorageService fileStorageService, PostService postService) {
+                            FileStorageService fileStorageService, PostService postService, UserFeignClient userFeignClient) {
         this.imageRepository = imageRepository;
         this.imageVersionRepository = imageVersionRepository;
         this.fileStorageService = fileStorageService;
         this.postService = postService;
+        this.userFeignClient = userFeignClient;
     }
 
     @Transactional
     @Override
     public UploadedImageResponse uploadImage(MultipartFile file, Long postId, StorageType storageType, List<String> sizes) throws IOException {
-        User currentUser = SecurityUtils.extractUserFromSecurityContext();
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
         Post post = postService.getPostEntity(postId);
 
         if (post == null) {
             throw new BusinessException(String.format("Post with id: %d could not be found", postId));
         }
 
-        if (!post.getUser().getId().equals(currentUser.getId())) {
+        if (!post.getUserId().equals(user.getId())) {
             throw new BusinessException("You are not authorized to upload images to this post");
         }
 
@@ -99,11 +101,11 @@ public class ImageServiceImpl implements ImageService {
 
     @Override
     public void removeImageFromPost(Long imageId, Long postId) {
-        User currentUser = SecurityUtils.extractUserFromSecurityContext();
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
         Image image = imageRepository.findByIdAndPostId(imageId, postId)
                 .orElseThrow(() -> new BusinessException("Image not found"));
 
-        if (!image.getPost().getUser().getId().equals(currentUser.getId())) {
+        if (!image.getPost().getUserId().equals(user.getId())) {
             throw new BusinessException("You are not authorized to remove this image");
         }
 

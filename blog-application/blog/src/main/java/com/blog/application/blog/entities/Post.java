@@ -24,12 +24,12 @@ public class Post extends BaseEntity {
     private String title;
 
     @Lob
+    //TODO change text field to summary by this does not make sense
     private String text;
 
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "user_id")
+    private Long userId;
 
     @ManyToMany
     @JoinTable(name = "post_tag",
