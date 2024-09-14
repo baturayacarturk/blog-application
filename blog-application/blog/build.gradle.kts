@@ -51,6 +51,8 @@ dependencies {
     implementation("org.apache.commons:commons-collections4:4.4")
     implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
     implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.10")
+    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.kafka:spring-kafka")
 
     implementation("org.elasticsearch:elasticsearch:7.17.10")
 
@@ -65,6 +67,9 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers:1.20.1")
     testImplementation("org.testcontainers:junit-jupiter:1.20.1")
     testImplementation("org.testcontainers:mysql:1.20.1")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

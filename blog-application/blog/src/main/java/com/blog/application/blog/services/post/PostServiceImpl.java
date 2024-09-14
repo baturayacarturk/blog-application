@@ -1,5 +1,6 @@
 package com.blog.application.blog.services.post;
 
+import com.blog.application.blog.dtos.common.ElasticPostEvent;
 import com.blog.application.blog.dtos.common.ElasticTagDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
@@ -12,6 +13,7 @@ import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
+import com.blog.application.blog.producer.ElasticEventsProducer;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
@@ -39,13 +41,15 @@ public class PostServiceImpl implements PostService {
     private final TagRepository tagRepository;
     private final UserFeignClient userFeignClient;
     private final PostElasticRepository elasticRepository;
+    private final ElasticEventsProducer elasticEventsProducer;
     private static final Logger logger = LogManager.getLogger(PostServiceImpl.class);
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserFeignClient userFeignClient, PostElasticRepository elasticRepository) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserFeignClient userFeignClient, PostElasticRepository elasticRepository, ElasticEventsProducer elasticEventsProducer) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
         this.userFeignClient = userFeignClient;
         this.elasticRepository = elasticRepository;
+        this.elasticEventsProducer = elasticEventsProducer;
     }
 
     @Override
@@ -60,14 +64,9 @@ public class PostServiceImpl implements PostService {
         tagRepository.saveAll(post.getTags());
 
         Post savedPost = postRepository.save(post);
-        ElasticPost elasticPost = new ElasticPost();
-        elasticPost.setId(savedPost.getId());
-        elasticPost.setUserId(savedPost.getUserId());
-        elasticPost.setText(savedPost.getText());
-        elasticPost.setTitle(savedPost.getTitle());
-        elasticPost.setTags(convertToElasticTagDtoList(savedPost.getTags()));
 
-        elasticRepository.save(elasticPost);
+        ElasticPostEvent elasticPostEvent = new ElasticPostEvent(savedPost.getId(), savedPost.getTitle(), savedPost.getText(), savedPost.getUserId(), convertToElasticTagDtoList(savedPost.getTags()));
+        elasticEventsProducer.sendElasticEvent(elasticPostEvent);
 
         CreatedSimpleBlogPost createdPostDto = new CreatedSimpleBlogPost();
         createdPostDto.setTitle(savedPost.getTitle());

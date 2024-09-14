@@ -2,6 +2,22 @@ server:
   port: 8080
 
 spring:
+  kafka:
+    producer:
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    admin:
+      properties:
+        bootstrap-servers: localhost:9092
+    topic: "elastic-events"
+    consumer:
+      bootstrap-server: localhost:9092
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: elastic-events-listener-group
+
+
   application:
     name: blog-service
   datasource:
@@ -52,3 +68,4 @@ info:
 
 file:
   upload-dir: ./files
+
