@@ -53,6 +53,10 @@ dependencies {
     implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.10")
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation ("org.springframework.boot:spring-boot-starter-amqp")
+    implementation ("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+
+
 
     implementation("org.elasticsearch:elasticsearch:7.17.10")
 

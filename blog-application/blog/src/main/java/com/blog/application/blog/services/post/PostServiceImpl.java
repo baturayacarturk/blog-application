@@ -14,6 +14,7 @@ import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.producer.ElasticEventsProducer;
+import com.blog.application.blog.producer.TagProducer;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
@@ -42,14 +43,16 @@ public class PostServiceImpl implements PostService {
     private final UserFeignClient userFeignClient;
     private final PostElasticRepository elasticRepository;
     private final ElasticEventsProducer elasticEventsProducer;
+    private final TagProducer tagProducer;
     private static final Logger logger = LogManager.getLogger(PostServiceImpl.class);
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserFeignClient userFeignClient, PostElasticRepository elasticRepository, ElasticEventsProducer elasticEventsProducer) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserFeignClient userFeignClient, PostElasticRepository elasticRepository, ElasticEventsProducer elasticEventsProducer, TagProducer tagProducer) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
         this.userFeignClient = userFeignClient;
         this.elasticRepository = elasticRepository;
         this.elasticEventsProducer = elasticEventsProducer;
+        this.tagProducer = tagProducer;
     }
 
     @Override
@@ -104,7 +107,7 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException("User not found");
         }
         post.getTags().add(tag);
-        postRepository.save(post);
+        tagProducer.sendMessage(post);
         return post;
     }
 

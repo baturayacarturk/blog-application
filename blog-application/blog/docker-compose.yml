@@ -98,6 +98,18 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     depends_on:
       - zoo1
+  rabbitmq:
+    container_name: rabbit_mq
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
 
 volumes:
   mysql-data:
@@ -105,3 +117,4 @@ volumes:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:
+  rabbitmq_data:
