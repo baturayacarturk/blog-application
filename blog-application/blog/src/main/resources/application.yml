@@ -1,22 +1,33 @@
 server:
   port: 8080
+topics:
+  retry: "elastic-events.RETRY"
+  dlt: "elastic-event.DLT"
 
 spring:
   kafka:
     producer:
-      bootstrap-servers: localhost:9092
+      bootstrap-servers: kafka1:19092
       key-serializer: org.apache.kafka.common.serialization.LongSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-    admin:
       properties:
-        bootstrap-servers: localhost:9092
+        retries: 10
+        max.block.ms: 2000
     topic: "elastic-events"
     consumer:
-      bootstrap-server: localhost:9092
+      bootstrap-servers: kafka1:19092
       key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: elastic-events-listener-group
+    admin:
+      properties:
+        bootstrap.servers: kafka1:19092
 
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
 
   application:
     name: blog-service
@@ -69,3 +80,16 @@ info:
 file:
   upload-dir: ./files
 
+rabbit-config:
+  exchanges:
+    - name: ADD_TAG_EXCHANGE
+      type: direct
+
+  queues:
+    - name: ADD_TAG_QUEUE
+      durable: true
+
+  bindings:
+    - queue: ADD_TAG_QUEUE
+      exchange: ADD_TAG_EXCHANGE
+      routingKey: TagRoutingKey

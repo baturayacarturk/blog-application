@@ -65,7 +65,7 @@ public class VideoServiceImpl implements VideoService {
         Video video = new Video();
         video.setFileName(file.getOriginalFilename());
         video.setStorageType(storageType);
-        video.setPost(postService.getPostEntity(postId));
+        video.setPost(post);
         List<VersionResponse> videoVersionResponses = new ArrayList<>();
         videoRepository.save(video);
         createVersionResponse(video, file, "original", "original", true, videoVersionResponses);
