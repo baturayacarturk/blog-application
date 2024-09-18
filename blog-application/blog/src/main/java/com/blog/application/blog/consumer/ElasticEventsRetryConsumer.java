@@ -5,36 +5,36 @@ import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.repositories.elastic.PostElasticRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ElasticEventsConsumer {
+
+public class ElasticEventsRetryConsumer {
+
     private final PostElasticRepository elasticRepository;
     private final ObjectMapper objectMapper;
 
-    private static final Logger logger = LogManager.getLogger(ElasticEventsConsumer.class);
+    private static final Logger logger = LogManager.getLogger(ElasticEventsRetryConsumer.class);
 
-    public ElasticEventsConsumer(PostElasticRepository elasticRepository, ObjectMapper objectMapper) {
+    public ElasticEventsRetryConsumer(PostElasticRepository elasticRepository, ObjectMapper objectMapper) {
         this.elasticRepository = elasticRepository;
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = {"elastic-events"}, groupId = "elastic-events")
+    @KafkaListener(topics = {"${topics.retry}"},groupId = "retry-listener-group")
     public void onMessage(ConsumerRecord<Long, String> consumerRecord) {
         try {
             ElasticPostEvent elasticPostEvent = objectMapper.readValue(consumerRecord.value(), ElasticPostEvent.class);
-            if (elasticPostEvent.text() == null || elasticPostEvent.text().isEmpty()) {
-                throw new RecoverableDataAccessException("Just testing purpose");
-            }
+
             ElasticPost elasticPost = new ElasticPost();
             elasticPost.setId(elasticPostEvent.eventId());
             elasticPost.setUserId(elasticPostEvent.userId());
-            elasticPost.setText(elasticPostEvent.text());
+            elasticPost.setText("Unprovided text || null");
             elasticPost.setTitle(elasticPostEvent.title());
             elasticPost.setTags(elasticPostEvent.tags());
 
@@ -45,6 +45,5 @@ public class ElasticEventsConsumer {
         }
     }
 
+
 }
-
-
