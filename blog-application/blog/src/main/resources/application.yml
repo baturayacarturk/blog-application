@@ -5,6 +5,8 @@ topics:
   dlt: "elastic-event.DLT"
 
 spring:
+  elasticsearch:
+    uris: ${spring.elasticsearch.uris}
   kafka:
     producer:
       bootstrap-servers: kafka1:19092
@@ -14,6 +16,9 @@ spring:
         retries: 10
         max.block.ms: 2000
     topic: "elastic-events"
+#    admin:
+#      properties:
+#        bootstrap-servers: localhost:9092
     consumer:
       bootstrap-servers: kafka1:19092
       key-deserializer: org.apache.kafka.common.serialization.LongDeserializer

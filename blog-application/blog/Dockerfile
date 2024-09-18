@@ -12,5 +12,6 @@ COPY src/main/resources/index-creation-script.json /app/index-creation-script.js
 RUN ./gradlew build -x test
 
 EXPOSE 8080
+EXPOSE 5005
 
-CMD ["java", "-jar", "/app/build/libs/blog-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/build/libs/blog-0.0.1-SNAPSHOT.jar"]
