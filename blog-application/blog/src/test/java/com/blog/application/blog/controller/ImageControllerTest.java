@@ -6,8 +6,6 @@ import com.blog.application.blog.dtos.common.VersionResponse;
 import com.blog.application.blog.dtos.responses.image.GetAllImagesResponse;
 import com.blog.application.blog.dtos.responses.image.UploadedImageResponse;
 import com.blog.application.blog.enums.StorageType;
-import com.blog.application.blog.repositories.TokenRepository;
-import com.blog.application.blog.repositories.UserRepository;
 import com.blog.application.blog.services.image.ImageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -46,12 +44,6 @@ public class ImageControllerTest {
 
     @MockBean
     private ImageService imageService;
-
-    @MockBean
-    private UserRepository userRepository;
-
-    @MockBean
-    private TokenRepository tokenRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -92,7 +84,7 @@ public class ImageControllerTest {
                 .param("postId", "1")
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions.andExpect(status().isNoContent());
+        resultActions.andExpect(status().isOk());
     }
 
     @Test

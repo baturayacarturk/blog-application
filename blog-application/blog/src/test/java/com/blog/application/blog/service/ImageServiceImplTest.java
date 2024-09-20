@@ -2,16 +2,17 @@ package com.blog.application.blog.service;
 
 import com.blog.application.blog.dtos.common.ResourceResponse;
 import com.blog.application.blog.dtos.common.VersionResponse;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.dtos.responses.image.GetAllImagesResponse;
 import com.blog.application.blog.dtos.responses.image.UploadedImageResponse;
 import com.blog.application.blog.entities.Image;
 import com.blog.application.blog.entities.ImageVersion;
 import com.blog.application.blog.entities.Post;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.enums.StorageType;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.repositories.ImageRepository;
 import com.blog.application.blog.repositories.ImageVersionRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.blog.application.blog.services.image.ImageServiceImpl;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.storage.FileStorageService;
@@ -19,9 +20,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.imageio.ImageIO;
@@ -52,28 +52,27 @@ public class ImageServiceImplTest {
 
     @Mock
     private PostService postService;
+    @Mock
+    private UserFeignClient userFeignClient;
 
     @InjectMocks
     private ImageServiceImpl imageService;
 
-    private User mockUser;
     private Post mockPost;
     private Path tempDir;
 
     @BeforeEach
     public void setUp() throws IOException {
         MockitoAnnotations.openMocks(this);
-        mockUser = new User();
-        mockUser.setId(1L);
-        mockUser.setUsername("testUser");
 
         mockPost = new Post();
         mockPost.setId(1L);
-        mockPost.setUser(mockUser);
+        mockPost.setUserId(10L);
+        UserClientDto mockUserClientDto = new UserClientDto();
+        mockUserClientDto.setId(10L);
 
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(mockUser, null, Arrays.asList())
-        );
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(mockUserClientDto));
+
 
         tempDir = Files.createTempDirectory("test-images");
         when(fileStorageService.resizeAndSaveImage(any(), anyInt(), anyInt(), anyString()))

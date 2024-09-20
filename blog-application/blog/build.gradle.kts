@@ -73,6 +73,8 @@ dependencies {
     testImplementation("org.testcontainers:mysql:1.20.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation ("org.testcontainers:elasticsearch:1.17.6")
+
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -87,14 +89,27 @@ dependencyManagement {
 tasks.withType<Test> {
     useJUnitPlatform()
     doNotTrackState("can't run a test twice without clean")
+
 }
 
-tasks.test {
+tasks.register<Test>("unit"){
+    exclude("**/integration/**","**/testcontainers/**")
+    systemProperty("spring.profiles.active", "test")
     testLogging {
         events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
         exceptionFormat = TestExceptionFormat.FULL
     }
 }
+
+tasks.register<Test>("Integration") {
+    include("**/integration/**","**/testcontainers/**")
+    systemProperty("spring.profiles.active", "default")
+    testLogging {
+        events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
+        exceptionFormat = TestExceptionFormat.FULL
+    }
+}
+
 sonar {
     properties {
         property("sonar.projectKey", "blog")

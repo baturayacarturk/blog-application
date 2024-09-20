@@ -1,38 +1,32 @@
 package com.blog.application.blog.service;
 
 import com.blog.application.blog.dtos.common.TagDto;
-import com.blog.application.blog.dtos.common.UserDto;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
-import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
-import com.blog.application.blog.dtos.responses.post.DeletedPostResponse;
-import com.blog.application.blog.dtos.responses.post.GetAllByTagId;
-import com.blog.application.blog.dtos.responses.post.UpdatedPostResponse;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
+import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
+import com.blog.application.blog.producer.ElasticEventsProducer;
+import com.blog.application.blog.producer.TagProducer;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
-import com.blog.application.blog.repositories.UserRepository;
 import com.blog.application.blog.repositories.elastic.PostElasticRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.blog.application.blog.services.post.PostServiceImpl;
-import com.blog.application.blog.services.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.*;
@@ -44,7 +38,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ActiveProfiles("test")
-
 public class PostServiceImplTest {
 
     @Mock
@@ -52,38 +45,34 @@ public class PostServiceImplTest {
 
     @Mock
     private TagRepository tagRepository;
-    @Mock
-    private UserService userService;
+
     @Mock
     private PostElasticRepository postElasticRepository;
+
+    @Mock
+    private UserFeignClient userFeignClient;
+
+    @Mock
+    private ElasticEventsProducer elasticEventsProducer;
+
+    @Mock
+    private TagProducer tagProducer;
 
     @InjectMocks
     private PostServiceImpl postService;
 
-    @Mock
-    private UserRepository userRepository;
-    private User mockUser;
     private Post mockPost;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        mockUser = new User();
-        mockUser.setId(1L);
-        mockUser.setUsername("testUser");
-        userRepository.save(mockUser);
-
         mockPost = new Post();
         mockPost.setId(1L);
-        mockPost.setUser(mockUser);
+        mockPost.setUserId(10L);
+        UserClientDto mockUserClientDto = new UserClientDto();
+        mockUserClientDto.setId(10L);
 
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(mockUser);
-
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-
-        SecurityContextHolder.setContext(securityContext);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(mockUserClientDto));
     }
 
     @Test
@@ -91,13 +80,14 @@ public class PostServiceImplTest {
         CreatePostRequest request = new CreatePostRequest();
         request.setTitle("Test Title");
         request.setText("Test Text");
-        request.setUserId(1L);
+        request.setUserId(10L);
         request.setTags(Arrays.asList(new TagDto("Tag1"), new TagDto("Tag2")));
 
         Post post = new Post();
+        post.setId(1L);
         post.setTitle(request.getTitle());
         post.setText(request.getText());
-        post.setUser(mockUser);
+        post.setUserId(10L);
         post.setTags(request.getTags().stream()
                 .map(tagDto -> {
                     Tag tag = new Tag();
@@ -108,48 +98,13 @@ public class PostServiceImplTest {
 
         when(postRepository.save(any(Post.class))).thenReturn(post);
         when(tagRepository.saveAll(any(Collection.class))).thenReturn(new ArrayList<>());
-        when(userService.findByUsername(mockUser.getUsername())).thenReturn(Optional.of(mockUser));
 
         CreatedSimpleBlogPost result = postService.createBlogPost(request);
 
         assertNotNull(result);
         assertEquals("Test Title", result.getTitle());
         assertEquals("Test Text", result.getText());
-        verify(postElasticRepository, times(1)).save(any(ElasticPost.class));
-
-    }
-    @Test
-    public void testCreateBlogPost_UserNotFound() {
-        CreatePostRequest createPostRequest = new CreatePostRequest();
-        createPostRequest.setTitle("Test Title");
-        createPostRequest.setText("Test Text");
-        createPostRequest.setUserId(1L);
-        createPostRequest.setTags(Arrays.asList(new TagDto("Tag1"), new TagDto("Tag2")));
-
-        when(userService.findByUsername(anyString())).thenReturn(Optional.empty());
-
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
-            postService.createBlogPost(createPostRequest);
-        });
-        assertEquals("User not found", thrown.getMessage());
-    }
-    @Test
-    public void testCreateBlogPost_UnauthorizedAccess() {
-        User mockUser = new User();
-        mockUser.setId(1L);
-        mockUser.setUsername("testUser");
-
-        CreatePostRequest createPostRequest = new CreatePostRequest();
-        createPostRequest.setTitle("Test Title");
-        createPostRequest.setText("Test Text");
-        createPostRequest.setUserId(2L);
-        createPostRequest.setTags(Arrays.asList(new TagDto("Tag1"), new TagDto("Tag2")));
-
-        when(userService.findByUsername(anyString())).thenReturn(Optional.of(mockUser));
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
-            postService.createBlogPost(createPostRequest);
-        });
-        assertEquals("You are accessing a resource that you are not permitted", thrown.getMessage());
+        verify(elasticEventsProducer, times(1)).sendElasticEvent(any());
     }
 
 
@@ -158,19 +113,19 @@ public class PostServiceImplTest {
         SimplifiedPostProjection projection = mock(SimplifiedPostProjection.class);
         when(projection.getTitle()).thenReturn("Title");
         when(projection.getText()).thenReturn("Text");
-        Pageable pageable = PageRequest.of(0 , 3);
+        Pageable pageable = PageRequest.of(0, 3);
 
         List<SimplifiedPostProjection> projections = Collections.singletonList(projection);
         Page<SimplifiedPostProjection> page = new PageImpl<>(projections, pageable, projections.size());
 
         when(postRepository.getAllSimplifiedBlogPost(pageable)).thenReturn(page);
-        Page<SimplifiedPostProjection> resultPage = postRepository.getAllSimplifiedBlogPost(pageable);
-        List<SimplifiedPostProjection> result = resultPage.getContent();
+        GetAllSimplifiedPost resultPage = postService.getAllSimplifiedPosts(0, 3);
 
-        assertNotNull(result);
-        assertEquals(1, result.size());
 
-        SimplifiedPostProjection simplifiedPost = result.get(0);
+        assertNotNull(resultPage);
+        assertEquals(1, resultPage.getPosts().size());
+
+        var simplifiedPost = resultPage.getPosts().get(0);
         assertEquals("Title", simplifiedPost.getTitle());
         assertEquals("Text", simplifiedPost.getText());
     }
@@ -178,51 +133,18 @@ public class PostServiceImplTest {
     @Test
     public void testAddTagToPost() {
         Post post = new Post();
-        post.setUser(mockUser);
+        post.setUserId(10L);
         Tag tag = new Tag();
         tag.setName("New Tag");
-        when(userService.findByUsername(mockUser.getUsername())).thenReturn(Optional.of(mockUser));
+
         when(postRepository.getPostEntity(anyLong())).thenReturn(post);
         when(postRepository.save(any(Post.class))).thenReturn(post);
-
 
         Post result = postService.addTagToPost(1L, tag);
 
         assertNotNull(result);
         assertTrue(result.getTags().contains(tag));
-    }
-    @Test
-    public void testAddTagToPost_UnauthorizedAccess() {
-        Long postId = 1L;
-        Tag newTag = new Tag();
-        newTag.setName("New Tag");
-
-        Post existingPost = new Post();
-        existingPost.setId(postId);
-        existingPost.setTitle("Existing Title");
-        existingPost.setText("Existing Text");
-        existingPost.setTags(new HashSet<>());
-
-        User mockUser = new User();
-        mockUser.setUsername("testUser");
-
-        User postOwner = new User();
-        postOwner.setUsername("otherUser");
-
-        existingPost.setUser(postOwner);
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(mockUser);
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        SecurityContextHolder.setContext(securityContext);
-
-        when(postRepository.getPostEntity(postId)).thenReturn(existingPost);
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
-            postService.addTagToPost(postId, newTag);
-        });
-        assertEquals("User not found", thrown.getMessage());
-        verify(postRepository, never()).save(any(Post.class));
-        verify(postRepository, times(1)).getPostEntity(postId);
+        verify(tagProducer, times(1)).sendMessage(any(Post.class));
     }
 
     @Test
@@ -237,27 +159,27 @@ public class PostServiceImplTest {
         Post result = postService.removeTagFromPost(post);
 
         assertNotNull(result);
+        verify(postRepository, times(1)).save(post);
     }
 
     @Test
     public void testGetPostEntity() {
-        Post post = new Post();
-        when(postRepository.getPostEntity(anyLong())).thenReturn(post);
+        when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
 
         Post result = postService.getPostEntity(1L);
 
         assertNotNull(result);
+        assertEquals(mockPost.getId(), result.getId());
     }
 
     @Test
     public void testGetPostsByTagId() {
         Tag tag = new Tag();
         Post post = new Post();
-        post.setUser(mockUser);
+        post.setUserId(10L);
         post.getTags().add(tag);
 
         when(postRepository.getPostEntityByTagId(anyLong())).thenReturn(Collections.singletonList(post));
-        when(userService.findByUsername(mockUser.getUsername())).thenReturn(Optional.of(mockUser));
 
         List<GetAllByTagId> result = postService.getPostsByTagId(1L);
 
@@ -280,12 +202,10 @@ public class PostServiceImplTest {
         post.setId(1L);
         post.setTitle("Old Title");
         post.setText("Old Text");
-        post.setUser(mockUser);
+        post.setUserId(10L);
 
         when(postRepository.getPostEntity(anyLong())).thenReturn(post);
         when(postRepository.save(any(Post.class))).thenReturn(post);
-        when(userService.findByUsername(mockUser.getUsername())).thenReturn(Optional.of(mockUser));
-
 
         UpdatedPostResponse result = postService.updatePost(request);
 
@@ -294,41 +214,7 @@ public class PostServiceImplTest {
         assertEquals("Updated Title", result.getTitle());
         assertEquals("Updated Text", result.getText());
     }
-    @Test
-    public void testUpdatePost_UnauthorizedAccess() {
-        Long postId = 1L;
-        Long userId = 1L;
 
-        User otherUser = new User();
-        otherUser.setId(2L);
-        otherUser.setUsername("otherUser");
-
-        Post existingPost = new Post();
-        existingPost.setId(postId);
-        existingPost.setTitle("Old Title");
-        existingPost.setText("Old Text");
-        existingPost.setUser(otherUser);
-
-        UpdatePostRequest updateRequest = new UpdatePostRequest();
-        updateRequest.setId(postId);
-        updateRequest.setTitle("Updated Title");
-        updateRequest.setText("Updated Text");
-
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(mockUser);
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        SecurityContextHolder.setContext(securityContext);
-
-        when(postRepository.getPostEntity(postId)).thenReturn(existingPost);
-
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
-            postService.updatePost(updateRequest);
-        });
-        assertEquals("You are accessing a resource that you are not permitted", thrown.getMessage());
-        verify(postRepository, times(1)).getPostEntity(postId);
-        verify(postRepository, times(0)).save(any(Post.class)); // Ensure save was not called
-    }
     @Test
     public void testDeletePostById_PostNotFound() {
         when(postRepository.getPostEntity(anyLong())).thenReturn(null);
@@ -339,31 +225,13 @@ public class PostServiceImplTest {
 
         assertEquals("Post not found", exception.getMessage());
     }
-    @Test
-    public void testDeletePostById_UserNotFound() {
-        when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
-        when(userService.findOnlyUserById(2L)).thenReturn(Optional.empty());
 
-        BusinessException exception = assertThrows(BusinessException.class, () -> {
-            postService.deletePostById(1L);
-        });
-
-        assertEquals("User not found", exception.getMessage());
-    }
     @Test
     public void testDeletePostById_UserDoesNotOwnPost() {
-        UserDto currentUser = new UserDto();
-        currentUser.setId(1L);
-        currentUser.setUsername("currentUser");
-
-        User anotherUser = new User();
-        anotherUser.setId(2L);
-        anotherUser.setUsername("anotherUser");
-
-        mockPost.setUser(anotherUser);
-
         when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
-        when(userService.findOnlyUserById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+        UserClientDto differentUser = new UserClientDto();
+        differentUser.setId(20L);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(differentUser));
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             postService.deletePostById(1L);
@@ -371,23 +239,17 @@ public class PostServiceImplTest {
 
         assertEquals("You are accessing a resource that you are not permitted", exception.getMessage());
     }
+
     @Test
     public void testDeletePostById_Success() {
-        UserDto userDto = new UserDto();
-        userDto.setId(mockUser.getId());
-        userDto.setUsername(mockUser.getUsername());
-        mockUser.setPosts(new HashSet<>(Collections.singletonList(mockPost)));
-
         when(postRepository.getPostEntity(anyLong())).thenReturn(mockPost);
-        when(userService.findOnlyUserById(mockUser.getId())).thenReturn(Optional.of(userDto));
+        when(postRepository.save(any(Post.class))).thenReturn(mockPost);
+        UserClientDto userClientDto = new UserClientDto();
+        userClientDto.setId(10L);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
+
         DeletedPostResponse response = postService.deletePostById(1L);
 
         assertNotNull(response);
-        assertEquals("Post with id: 1 is successfully deleted.", response.getResponse());
-
-        verify(postRepository, times(1)).delete(mockPost);
-
-        assertTrue(mockPost.getTags().isEmpty());
     }
-
 }

@@ -3,10 +3,9 @@ package com.blog.application.blog.controller;
 import com.blog.application.blog.controllers.VideoController;
 import com.blog.application.blog.dtos.common.ResourceResponse;
 import com.blog.application.blog.dtos.common.VersionResponse;
-import com.blog.application.blog.dtos.responses.video.*;
+import com.blog.application.blog.dtos.responses.video.GetAllVideosResponse;
+import com.blog.application.blog.dtos.responses.video.UploadedVideoResponse;
 import com.blog.application.blog.enums.StorageType;
-import com.blog.application.blog.repositories.TokenRepository;
-import com.blog.application.blog.repositories.UserRepository;
 import com.blog.application.blog.services.video.VideoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -18,7 +17,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,17 +44,10 @@ public class VideoControllerTest {
     @MockBean
     private VideoService videoService;
 
-    @MockBean
-    private UserRepository userRepository;
-
-    @MockBean
-    private TokenRepository tokenRepository;
-
     @Autowired
     private ObjectMapper objectMapper;
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testUploadVideo() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "test.mp4", MediaType.APPLICATION_OCTET_STREAM_VALUE, "test video content".getBytes());
 
@@ -84,7 +75,6 @@ public class VideoControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testRemoveVideoFromPost() throws Exception {
         doNothing().when(videoService).removeVideoFromPost(anyLong(), anyLong());
 
@@ -92,11 +82,10 @@ public class VideoControllerTest {
                 .param("postId", "1")
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions.andExpect(status().isNoContent());
+        resultActions.andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testGetOriginalVideoById() throws Exception {
         ByteArrayResource resource = new ByteArrayResource("test video content".getBytes());
         ResourceResponse response = new ResourceResponse();
@@ -115,7 +104,6 @@ public class VideoControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testGetVersionResponseById() throws Exception {
         ByteArrayResource resource = new ByteArrayResource("test video content".getBytes());
         ResourceResponse response = new ResourceResponse();
@@ -134,7 +122,6 @@ public class VideoControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testGetAllOriginalVideosByPostId() throws Exception {
         List<VersionResponse> responses = Arrays.asList(
                 new VersionResponse(1L, "original", "720p",null,null),
@@ -157,7 +144,6 @@ public class VideoControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testGetAllVideosByPostId() throws Exception {
         List<GetAllVideosResponse> responses = Arrays.asList(
                 new GetAllVideosResponse(1L, true, Arrays.asList(new VersionResponse(1L, "original", "720p",null,null))),
@@ -180,7 +166,6 @@ public class VideoControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testUser")
     public void testGetAllVideosByPostId_NoContent() throws Exception {
         when(videoService.getAllVideosByPostId(anyLong())).thenReturn(null);
 
