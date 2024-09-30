@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Testcontainers
-public class UserIntegrationTest extends AbstractContainerBase {
+public class UserIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

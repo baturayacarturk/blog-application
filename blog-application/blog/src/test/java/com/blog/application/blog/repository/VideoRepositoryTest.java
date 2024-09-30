@@ -24,9 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class VideoRepositoryTest {
 
     @Autowired
-    private TestEntityManager entityManager;
-
-    @Autowired
     private VideoRepository videoRepository;
 
     @Autowired
@@ -47,7 +44,7 @@ public class VideoRepositoryTest {
         video.setFileName("test.mp4");
         video.setPost(testPost);
         video.setStorageType(StorageType.FILE_SYSTEM);
-        video = entityManager.persist(video);
+        video = videoRepository.save(video);
 
         Optional<Video> found = videoRepository.findByIdAndPostId(video.getId(), testPost.getId());
 
@@ -61,13 +58,13 @@ public class VideoRepositoryTest {
         video1.setFileName("test1.mp4");
         video1.setPost(testPost);
         video1.setStorageType(StorageType.FILE_SYSTEM);
-        entityManager.persist(video1);
+        videoRepository.save(video1);
 
         Video video2 = new Video();
         video2.setFileName("test2.mp4");
         video2.setPost(testPost);
         video2.setStorageType(StorageType.FILE_SYSTEM);
-        entityManager.persist(video2);
+        videoRepository.save(video2);
 
         List<Video> videos = videoRepository.findAllByPostId(testPost.getId());
 
@@ -99,13 +96,13 @@ public class VideoRepositoryTest {
         video1.setFileName("test1.mp4");
         video1.setPost(testPost);
         video1.setStorageType(StorageType.FILE_SYSTEM);
-        entityManager.persist(video1);
+        videoRepository.save(video1);
 
         Video video2 = new Video();
         video2.setFileName("test2.mp4");
         video2.setPost(anotherPost);
         video2.setStorageType(StorageType.FILE_SYSTEM);
-        entityManager.persist(video2);
+        videoRepository.save(video2);
 
         List<Video> videosForTestPost = videoRepository.findAllByPostId(testPost.getId());
         List<Video> videosForAnotherPost = videoRepository.findAllByPostId(anotherPost.getId());

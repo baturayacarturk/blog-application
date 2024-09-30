@@ -29,8 +29,6 @@ class PostRepositoryTest {
     private PostRepository postRepository;
 
     @Autowired
-    private TestEntityManager entityManager;
-    @Autowired
     private TagRepository tagRepository;
     private Long tag1Id;
     private Long tag2Id;

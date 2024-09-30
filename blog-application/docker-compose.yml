@@ -86,9 +86,6 @@ services:
       dockerfile: Dockerfile
     container_name: blog-app
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/blogdb?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
-      - SPRING_DATASOURCE_USERNAME=bloguser
-      - SPRING_DATASOURCE_PASSWORD=baturayacarturk
       - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8070/eureka/
     ports:
@@ -113,6 +110,8 @@ services:
         condition: service_healthy
     networks:
       - microservices-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
   user-service:
     build:
@@ -234,13 +233,7 @@ services:
         condition: service_healthy
     networks:
       - microservices-network
-  h2:
-    image: oscarfonts/h2
-    ports:
-      - "1521:1521"
-      - "81:81"
-    environment:
-      - H2_OPTIONS=-ifNotExists
+
 
 volumes:
   mysql-data:

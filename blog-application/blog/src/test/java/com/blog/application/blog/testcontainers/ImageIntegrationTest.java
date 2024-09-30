@@ -23,6 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -46,7 +47,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Testcontainers
-public class ImageIntegrationTest extends AbstractContainerBase {
+@ActiveProfiles("integration")
+public class ImageIntegrationTest  {
     @Autowired
     private MockMvc mockMvc;
 
@@ -66,6 +68,7 @@ public class ImageIntegrationTest extends AbstractContainerBase {
 
     private Post testPost;
     private Path tempDir;
+    private UserClientDto userClientDto;
 
 
     @BeforeEach
@@ -81,9 +84,9 @@ public class ImageIntegrationTest extends AbstractContainerBase {
         testPost.setText("Test Post Text");
         testPost.setUserId(10L);
         testPost = postRepository.save(testPost);
-        UserClientDto mockUser = new UserClientDto();
-        mockUser.setId(10L);
-        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(mockUser));
+        userClientDto = new UserClientDto();
+        userClientDto.setId(10L);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
 
     }
 
@@ -102,6 +105,7 @@ public class ImageIntegrationTest extends AbstractContainerBase {
         try (MockedStatic<ImageIO> imageIOMock = Mockito.mockStatic(ImageIO.class)) {
             BufferedImage mockBufferedImage = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
             imageIOMock.when(() -> ImageIO.read(any(ByteArrayInputStream.class))).thenReturn(mockBufferedImage);
+            when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
 
             ResultActions resultActions = mockMvc.perform(multipart("/api/images")
                     .file(file)

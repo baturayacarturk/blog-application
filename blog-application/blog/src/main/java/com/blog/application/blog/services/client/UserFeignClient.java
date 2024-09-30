@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 
-@FeignClient(name = "user-service",configuration = UserFeignClientConfig.class)
+@FeignClient(name = "user-service", configuration = UserFeignClientConfig.class, primary = false)
 
 public interface UserFeignClient {
     @GetMapping(value = "/api/users/getUserDetails", consumes = "application/json")

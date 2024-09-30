@@ -1,0 +1,200 @@
+pipeline {
+    agent any
+    tools{
+        jdk 'Java17'
+        gradle 'Gradle8.8'
+    }
+    environment{
+        APP_NAME = "blog-application"
+        RELEASE = "1.0.0"
+        DOCKER_USER ="baturayacarturk"
+        DOCKER_PASS = 'dockerhub'
+        IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
+        IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+        DOCKER_CREDENTIALS = credentials('dockerhub')
+    }
+
+    stages {
+        stage('Cleanup workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/baturayacarturk/blog-application.git', branch: 'main'
+            }
+        }
+
+        stage('Prepare') {
+            steps {
+                dir('blog-application/blog') {
+                    sh 'chmod +x gradlew'
+                    sh 'ls -la'
+                }
+            }
+        }
+
+        stage('Build Images') {
+            steps {
+                dir('blog-application/blog') {
+                    sh 'docker-compose build --no-cache'
+                }
+            }
+        }
+
+        stage('Start Services') {
+            steps {
+                dir('blog-application/blog') {
+                    script {
+                        try {
+                            sh 'docker-compose config'
+                            sh 'docker-compose up -d'
+                        } catch (Exception e) {
+                            echo "Error starting services: ${e.message}"
+                            sh 'docker-compose logs'
+                            error "Failed to start services"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Wait for Services') {
+            steps {
+                sleep(time: 60, unit: 'SECONDS')
+            }
+        }
+
+        stage('Execute Unit Tests') {
+            steps {
+                dir('blog-application/blog') {
+                    script {
+                        try {
+                            sh 'docker-compose exec -T app ./gradlew unit --info'
+                        } catch (Exception e) {
+                            echo "Unit tests failed. See detailed output below."
+                            sh 'docker-compose exec -T app ./gradlew unit --info'
+                            currentBuild.result = 'UNSTABLE'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Execute Integration Tests') {
+            steps {
+                dir('blog-application/blog') {
+                    script {
+                        try {
+                            sh 'docker-compose exec -T app ./gradlew Integration --info'
+                        } catch (Exception e) {
+                            echo "Integration tests failed. See detailed output below."
+                            sh 'docker-compose exec -T app ./gradlew Integration --info'
+                            currentBuild.result = 'UNSTABLE'
+                        }
+                    }
+                }
+            }
+        }
+stage('Push Docker Image') {
+            steps {
+                dir('blog-application/blog') {
+                    script {
+                        def appImage = sh(script: "docker-compose images -q app", returnStdout: true).trim()
+
+                        echo "Image to be pushed: ${appImage}"
+                        sh "docker inspect ${appImage}"
+
+                        sh "echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin"
+
+                        sh "docker tag ${appImage} ${IMAGE_NAME}:${IMAGE_TAG}"
+
+                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+
+                        sh "docker logout"
+                    }
+                }
+            }
+        }
+
+        stage('Collect Results') {
+            steps {
+                dir('blog-application/blog') {
+                    sh 'docker cp $(docker-compose ps -q app):/app/build/test-results/unit .'
+                    sh 'docker cp $(docker-compose ps -q app):/app/build/reports/tests/unit htmlReportsUnit'
+                    sh 'docker cp $(docker-compose ps -q app):/app/build/test-results/Integration .'
+                    sh 'docker cp $(docker-compose ps -q app):/app/build/reports/tests/Integration htmlReportsIntegration'
+                }
+            }
+        }
+
+        stage('Debug Report Directories') {
+            steps {
+                dir('blog-application/blog') {
+                    sh 'ls -R htmlReportsUnit'
+                    sh 'ls -R htmlReportsIntegration'
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                dir('blog-application/blog') {
+                    sh 'docker-compose down'
+                }
+            }
+        }
+    }
+    post {
+        always {
+            junit(
+                testResults: '**/build/test-results/**/*.xml',
+                allowEmptyResults: true,
+                keepLongStdio: true
+            )
+            archiveArtifacts artifacts: 'blog-application/blog/htmlReportsUnit/**/*', fingerprint: true
+            archiveArtifacts artifacts: 'blog-application/blog/htmlReportsIntegration/**/*', fingerprint: true
+            publishHTML(target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'blog-application/blog/htmlReportsUnit',
+                reportFiles: 'index.html',
+                reportName: 'Unit Tests HTML Report'
+            ])
+            publishHTML(target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'blog-application/blog/htmlReportsIntegration',
+                reportFiles: 'index.html',
+                reportName: 'Integration Tests HTML Report'
+            ])
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        unstable {
+            echo 'Pipeline is unstable, likely due to test failures.'
+            script {
+                def testResultsPath = 'blog-application/blog/build/test-results'
+                def failedTests = findFiles(glob: "${testResultsPath}/**/**/TEST-*.xml")
+                failedTests.each { file ->
+                    def result = readFile(file.path)
+                    def failureCount = (result =~ /failures="([^"]+)"/)[0][1] as int
+                    if (failureCount > 0) {
+                        echo "Failed tests in ${file.name}:"
+                        def testCases = new XmlSlurper().parseText(result).testcase
+                        testCases.findAll { it.failure.size() > 0 }.each { testCase ->
+                            echo "  - ${testCase.@name}: ${testCase.failure.@message}"
+                        }
+                    }
+                }
+            }
+        }
+        failure {
+            echo 'Pipeline failed.'
+        }
+    }
+}

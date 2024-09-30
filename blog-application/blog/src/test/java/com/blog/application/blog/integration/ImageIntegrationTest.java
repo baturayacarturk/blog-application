@@ -1,5 +1,6 @@
 package com.blog.application.blog.integration;
 
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.entities.Image;
 import com.blog.application.blog.entities.ImageVersion;
 import com.blog.application.blog.entities.Post;
@@ -7,6 +8,7 @@ import com.blog.application.blog.enums.StorageType;
 import com.blog.application.blog.repositories.ImageRepository;
 import com.blog.application.blog.repositories.ImageVersionRepository;
 import com.blog.application.blog.repositories.PostRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +18,12 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -34,11 +39,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
+@ActiveProfiles("integration")
 public class ImageIntegrationTest {
 
     @Autowired
@@ -55,10 +62,13 @@ public class ImageIntegrationTest {
 
     @Autowired
     private PostRepository postRepository;
+    @MockBean
+    private UserFeignClient userFeignClient;
 
 
     private Post testPost;
     private Path tempDir;
+    private UserClientDto userClientDto;
 
 
     @BeforeEach
@@ -73,10 +83,15 @@ public class ImageIntegrationTest {
         testPost = new Post();
         testPost.setTitle("Test Post");
         testPost.setText("Test Post Text");
+        testPost.setUserId(10L);
         testPost = postRepository.save(testPost);
+        userClientDto = new UserClientDto();
+        userClientDto.setId(10L);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
 
 
     }
+
     @AfterEach
     public void tearDown() throws IOException {
         Files.walk(tempDir)
@@ -129,7 +144,7 @@ public class ImageIntegrationTest {
                 .param("postId", testPost.getId().toString())
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions.andExpect(status().isNoContent());
+        resultActions.andExpect(status().isOk());
 
         assertThat(imageRepository.findById(image.getId())).isEmpty();
     }
@@ -168,6 +183,7 @@ public class ImageIntegrationTest {
             assertThat(savedVersion.getHeight()).isEqualTo(800);
         }
     }
+
     @Test
     public void testGetVersionResponseById() throws Exception {
         try (MockedStatic<Files> filesMockedStatic = Mockito.mockStatic(Files.class)) {

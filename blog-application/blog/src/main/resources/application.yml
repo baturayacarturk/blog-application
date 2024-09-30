@@ -6,8 +6,9 @@ topics:
 
 spring:
   elasticsearch:
-    uris: ${spring.elasticsearch.uris}
+    uris: http://elasticsearch:9200
   kafka:
+    bootstrap-servers: kafka1:19092
     producer:
       bootstrap-servers: kafka1:19092
       key-serializer: org.apache.kafka.common.serialization.LongSerializer
@@ -16,17 +17,13 @@ spring:
         retries: 10
         max.block.ms: 2000
     topic: "elastic-events"
-#    admin:
-#      properties:
-#        bootstrap-servers: localhost:9092
+
     consumer:
       bootstrap-servers: kafka1:19092
       key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: elastic-events-listener-group
-    admin:
-      properties:
-        bootstrap.servers: kafka1:19092
+
 
   rabbitmq:
     host: rabbitmq
@@ -98,3 +95,6 @@ rabbit-config:
     - queue: ADD_TAG_QUEUE
       exchange: ADD_TAG_EXCHANGE
       routingKey: TagRoutingKey
+logging:
+  level:
+    org.springframework.data.elasticsearch.client.WIRE: TRACE

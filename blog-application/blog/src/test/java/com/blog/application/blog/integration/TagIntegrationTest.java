@@ -2,11 +2,13 @@ package com.blog.application.blog.integration;
 
 import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.dtos.responses.post.CreatedSimpleBlogPost;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.tag.TagService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -23,6 +28,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
+@ActiveProfiles("integration")
 public class TagIntegrationTest {
 
     @Autowired
@@ -49,13 +56,18 @@ public class TagIntegrationTest {
 
     @Autowired
     private TagService tagService;
+    @MockBean
+    private UserFeignClient userFeignClient;
+    private UserClientDto userClientDto;
 
-    private String jwtToken;
 
     @BeforeEach
     public void setUp() {
         postRepository.deleteAll();
         tagRepository.deleteAll();
+        userClientDto = new UserClientDto();
+        userClientDto.setId(10L);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
 
     }
 
