@@ -2,17 +2,17 @@ package com.blog.application.blog.services.video;
 
 import com.blog.application.blog.dtos.common.ResourceResponse;
 import com.blog.application.blog.dtos.common.VersionResponse;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.dtos.responses.video.GetAllVideosResponse;
 import com.blog.application.blog.dtos.responses.video.UploadedVideoResponse;
 import com.blog.application.blog.entities.Post;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.entities.Video;
 import com.blog.application.blog.entities.VideoVersion;
 import com.blog.application.blog.enums.StorageType;
 import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.repositories.VideoRepository;
 import com.blog.application.blog.repositories.VideoVersionRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.storage.FileStorageService;
 import org.apache.commons.collections4.CollectionUtils;
@@ -36,22 +36,25 @@ public class VideoServiceImpl implements VideoService {
     private final VideoVersionRepository videoVersionRepository;
     private final FileStorageService fileStorageService;
     private final PostService postService;
+    private final UserFeignClient userFeignClient;
 
-    public VideoServiceImpl(VideoRepository videoRepository, VideoVersionRepository videoVersionRepository, FileStorageService fileStorageService, PostService postService) {
+    public VideoServiceImpl(VideoRepository videoRepository, VideoVersionRepository videoVersionRepository, FileStorageService fileStorageService, PostService postService, UserFeignClient userFeignClient) {
         this.videoRepository = videoRepository;
         this.videoVersionRepository = videoVersionRepository;
         this.fileStorageService = fileStorageService;
         this.postService = postService;
+        this.userFeignClient = userFeignClient;
     }
 
     @Transactional
     public UploadedVideoResponse uploadVideo(MultipartFile file, Long postId, StorageType storageType, List<String> qualities) throws IOException {
-        User currentUser = SecurityUtils.extractUserFromSecurityContext();
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
+
         Post post = postService.getPostEntity(postId);
         if (post == null) {
             throw new BusinessException(String.format("Post with id: %d could not be found", postId));
         }
-        if (!post.getUser().getId().equals(currentUser.getId())) {
+        if (!post.getUserId().equals(user.getId())) {
             throw new BusinessException("You are not authorized to upload images to this post");
         }
         boolean isVideo = isVideoFile(file);

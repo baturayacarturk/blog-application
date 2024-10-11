@@ -2,34 +2,33 @@ package com.blog.application.blog.services.post;
 
 import com.blog.application.blog.dtos.common.ElasticTagDto;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
-import com.blog.application.blog.dtos.common.UserDto;
+import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.dtos.responses.elastic.SearchByKeywordResponse;
 import com.blog.application.blog.dtos.responses.post.*;
-import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.responses.tag.TagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.entities.elastic.ElasticPost;
 import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.helpers.params.utils.SecurityUtils;
 import com.blog.application.blog.projection.SimplifiedPostProjection;
 import com.blog.application.blog.repositories.PostRepository;
 import com.blog.application.blog.repositories.TagRepository;
-
 import com.blog.application.blog.repositories.elastic.PostElasticRepository;
-import com.blog.application.blog.services.user.UserService;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import com.blog.application.blog.services.client.UserFeignClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -38,37 +37,32 @@ public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
-    private final UserService userService;
+    private final UserFeignClient userFeignClient;
     private final PostElasticRepository elasticRepository;
     private static final Logger logger = LogManager.getLogger(PostServiceImpl.class);
 
-    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserService userService, PostElasticRepository elasticRepository) {
+    public PostServiceImpl(PostRepository postRepository, TagRepository tagRepository, UserFeignClient userFeignClient, PostElasticRepository elasticRepository) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
-        this.userService = userService;
+        this.userFeignClient = userFeignClient;
         this.elasticRepository = elasticRepository;
     }
 
     @Override
     public CreatedSimpleBlogPost createBlogPost(CreatePostRequest createPostRequest) {
-        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
-        Optional<User> user = userService.findByUsername(extractedUser.getUsername());
-        if (user.isEmpty()) {
-            logger.error("User not found with username: {}", extractedUser.getUsername());
-            throw new BusinessException("User not found");
-        }
-        if (!Objects.equals(user.get().getId(), createPostRequest.getUserId())) {
-            logger.error("Unauthorized access attempt by user: {} to create post for userId: {}", extractedUser.getUsername(), createPostRequest.getUserId());
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
+
+        if (!Objects.equals(user.getId(), createPostRequest.getUserId())) {
+            logger.error("Unauthorized access attempt by user: {} to create post for userId: {}", user.getUsername(), createPostRequest.getUserId());
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
-        Post post = createdPostRequestToPostEntity(createPostRequest, user.get());
+        Post post = createdPostRequestToPostEntity(createPostRequest, user);
         tagRepository.saveAll(post.getTags());
-
 
         Post savedPost = postRepository.save(post);
         ElasticPost elasticPost = new ElasticPost();
         elasticPost.setId(savedPost.getId());
-        elasticPost.setUserId(savedPost.getUser().getId());
+        elasticPost.setUserId(savedPost.getUserId());
         elasticPost.setText(savedPost.getText());
         elasticPost.setTitle(savedPost.getTitle());
         elasticPost.setTags(convertToElasticTagDtoList(savedPost.getTags()));
@@ -85,7 +79,6 @@ public class PostServiceImpl implements PostService {
 
     }
 
-
     @Override
     public GetAllSimplifiedPost getAllSimplifiedPosts(int offset, int limit) {
         Pageable pageable = PageRequest.of(offset / limit, limit);
@@ -95,7 +88,6 @@ public class PostServiceImpl implements PostService {
         List<SimplifiedPost> simplifiedPosts = page.getContent().stream()
                 .map(projection -> new SimplifiedPost(projection.getTitle(), projection.getText()))
                 .collect(Collectors.toList());
-
         return new GetAllSimplifiedPost(
                 simplifiedPosts,
                 page.getTotalElements(),
@@ -104,13 +96,12 @@ public class PostServiceImpl implements PostService {
         );
     }
 
-
     @Override
     public Post addTagToPost(Long postId, Tag tag) {
         Post post = postRepository.getPostEntity(postId);
-        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
-        if (!extractedUser.getUsername().equals(post.getUser().getUsername())) {
-            logger.error("Unauthorized attempt to add tag to post by user: {}", extractedUser.getUsername());
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
+        if (!user.getId().equals(post.getUserId())) {
+            logger.error("Unauthorized attempt to add tag to post by user: {}", user.getUsername());
             throw new BusinessException("User not found");
         }
         post.getTags().add(tag);
@@ -149,15 +140,10 @@ public class PostServiceImpl implements PostService {
             logger.error("Post not found with id: {}", postId);
             throw new BusinessException("Post not found");
         }
-        User currentUser = SecurityUtils.extractUserFromSecurityContext();
-        Optional<UserDto> userDto = userService.findOnlyUserById(currentUser.getId());
-        if (!userDto.isPresent()) {
-            logger.error("User not found with id: {}", currentUser.getId());
-            throw new BusinessException("User not found");
-        }
-        boolean matchedPost = post.getUser().getId().equals(userDto.get().getId());
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
+        boolean matchedPost = Objects.equals(post.getUserId(), user.getId());
         if (!matchedPost) {
-            logger.error("Unauthorized attempt to delete post with id: {} by user: {}", postId, currentUser.getUsername());
+            logger.error("Unauthorized attempt to delete post with id: {} by user: {}", postId, user.getUsername());
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
         post.getTags().clear();
@@ -179,10 +165,10 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public UpdatedPostResponse updatePost(UpdatePostRequest updatePostRequest) {
-        User extractedUser = SecurityUtils.extractUserFromSecurityContext();
+        UserClientDto user = userFeignClient.getUserDetails().getBody();
         Post post = postRepository.getPostEntity(updatePostRequest.getId());
-        if (!post.getUser().getId().equals(extractedUser.getId())) {
-            logger.error("Unauthorized attempt to update post with id: {} by user: {}", updatePostRequest.getId(), extractedUser.getUsername());
+        if (!Objects.equals(post.getUserId(), user.getId())) {
+            logger.error("Unauthorized attempt to update post with id: {} by user: {}", updatePostRequest.getId(), user.getUsername());
             throw new BusinessException("You are accessing a resource that you are not permitted");
         }
 
@@ -198,11 +184,11 @@ public class PostServiceImpl implements PostService {
     }
 
 
-    private Post createdPostRequestToPostEntity(CreatePostRequest createPostRequest, User user) {
+    private Post createdPostRequestToPostEntity(CreatePostRequest createPostRequest, UserClientDto user) {
         Post post = new Post();
         post.setText(createPostRequest.getText());
         post.setTitle(createPostRequest.getTitle());
-        post.setUser(user);
+        post.setUserId(user.getId());
         Set<Tag> tags = new HashSet<>();
         createPostRequest.getTags().forEach(tagDto -> {
             Tag tag = new Tag();
@@ -251,5 +237,4 @@ public class PostServiceImpl implements PostService {
         searchByKeywordResponse.setTags(elasticPost.getTags());
         return searchByKeywordResponse;
     }
-
 }

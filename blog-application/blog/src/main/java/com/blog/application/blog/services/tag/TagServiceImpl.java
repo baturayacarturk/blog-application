@@ -4,15 +4,12 @@ import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.responses.post.AddTagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.exceptions.messages.TagExceptionMessages;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.repositories.TagRepository;
 import com.blog.application.blog.services.post.PostService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
