@@ -2,16 +2,17 @@ package com.blog.application.blog.service;
 
 import com.blog.application.blog.dtos.common.ResourceResponse;
 import com.blog.application.blog.dtos.common.VersionResponse;
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.dtos.responses.video.GetAllVideosResponse;
 import com.blog.application.blog.dtos.responses.video.UploadedVideoResponse;
 import com.blog.application.blog.entities.Post;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.entities.Video;
 import com.blog.application.blog.entities.VideoVersion;
 import com.blog.application.blog.enums.StorageType;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.repositories.VideoRepository;
 import com.blog.application.blog.repositories.VideoVersionRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.storage.FileStorageService;
 import com.blog.application.blog.services.video.VideoServiceImpl;
@@ -21,9 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
@@ -52,28 +52,25 @@ public class VideoServiceImplTest {
 
     @Mock
     private PostService postService;
+    @Mock
+    private UserFeignClient userFeignClient;
 
     @InjectMocks
     private VideoServiceImpl videoService;
 
-    private User mockUser;
     private Post mockPost;
     private Path tempDir;
 
     @BeforeEach
     public void setUp() throws IOException {
         MockitoAnnotations.openMocks(this);
-        mockUser = new User();
-        mockUser.setId(1L);
-        mockUser.setUsername("testUser");
-
         mockPost = new Post();
         mockPost.setId(1L);
-        mockPost.setUser(mockUser);
+        mockPost.setUserId(10L);
+        UserClientDto mockUserClientDto = new UserClientDto();
+        mockUserClientDto.setId(10L);
 
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(mockUser, null, Arrays.asList())
-        );
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(mockUserClientDto));
 
         tempDir = Files.createTempDirectory("test-videos");
         when(fileStorageService.saveVideoWithQuality(any(), anyString()))
@@ -114,7 +111,7 @@ public class VideoServiceImplTest {
         UploadedVideoResponse response = videoService.uploadVideo(file, 1L, StorageType.FILE_SYSTEM, Arrays.asList("720p"));
 
         assertNotNull(response);
-        assertEquals(1L, response.getId());
+        assertEquals(1L, response.getVideoVersions().get(0).getId());
         assertEquals(2, response.getVideoVersions().size());
     }
 

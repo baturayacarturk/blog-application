@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
 	java
 	id("org.springframework.boot") version "2.7.18"
@@ -35,10 +38,17 @@ dependencies {
 	implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
 	implementation("io.jsonwebtoken:jjwt-jackson:0.11.5")
 	implementation("org.postgresql:postgresql")
+	implementation("com.h2database:h2")
+
+
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
+	testImplementation("org.testcontainers:testcontainers:1.20.1")
+	testImplementation("org.testcontainers:junit-jupiter:1.20.1")
+	testImplementation("org.testcontainers:postgresql:1.20.1")
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 dependencyManagement {
@@ -49,4 +59,24 @@ dependencyManagement {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	doNotTrackState("can't run a test twice without clean")
+
+}
+
+tasks.register<Test>("unit"){
+	exclude("**/integration/**","**/testcontainers/**")
+	systemProperty("spring.profiles.active", "test")
+	testLogging {
+		events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
+		exceptionFormat = TestExceptionFormat.FULL
+	}
+}
+
+tasks.register<Test>("Integration") {
+	include("**/integration/**","**/testcontainers/**")
+	systemProperty("spring.profiles.active", "default")
+	testLogging {
+		events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
+		exceptionFormat = TestExceptionFormat.FULL
+	}
 }

@@ -1,12 +1,5 @@
-package com.blog.application.blog.testcontainers;
+package user.user_service.integration;
 
-import com.blog.application.blog.dtos.requests.user.AuthenticationRequest;
-import com.blog.application.blog.dtos.requests.user.RegisterRequest;
-import com.blog.application.blog.entities.Token;
-import com.blog.application.blog.entities.User;
-import com.blog.application.blog.repositories.TokenRepository;
-import com.blog.application.blog.repositories.UserRepository;
-import com.blog.application.blog.services.user.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +9,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import user.user_service.dtos.AuthenticationDto;
+import user.user_service.entities.Token;
+import user.user_service.entities.User;
+import user.user_service.repositories.TokenRepository;
+import user.user_service.repositories.UserRepository;
+import user.user_service.services.UserService;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,13 +22,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
-@Testcontainers
-public class UserIntegrationTest extends AbstractContainerBase {
+public class UserIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -46,7 +43,6 @@ public class UserIntegrationTest extends AbstractContainerBase {
     @Autowired
     private TokenRepository tokenRepository;
 
-
     @BeforeEach
     public void setUp() {
         userRepository.deleteAll();
@@ -55,7 +51,7 @@ public class UserIntegrationTest extends AbstractContainerBase {
 
     @Test
     void testRegister() throws Exception {
-        RegisterRequest registerRequest = new RegisterRequest();
+        AuthenticationDto registerRequest = new AuthenticationDto();
         registerRequest.setUsername("testUser");
         registerRequest.setPassword("password");
 
@@ -81,12 +77,12 @@ public class UserIntegrationTest extends AbstractContainerBase {
 
     @Test
     void testAuthenticate() throws Exception {
-        RegisterRequest registerRequest = new RegisterRequest();
+        AuthenticationDto registerRequest = new AuthenticationDto();
         registerRequest.setUsername("testUser");
         registerRequest.setPassword("password");
         userService.register(registerRequest);
 
-        AuthenticationRequest authenticationRequest = new AuthenticationRequest();
+        AuthenticationDto authenticationRequest = new AuthenticationDto();
         authenticationRequest.setUsername("testUser");
         authenticationRequest.setPassword("password");
 

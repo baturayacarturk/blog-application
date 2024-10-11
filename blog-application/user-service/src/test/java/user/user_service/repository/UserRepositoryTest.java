@@ -1,14 +1,15 @@
-package com.blog.application.blog.repository;
+package user.user_service.repository;
 
-import com.blog.application.blog.dtos.common.UserDto;
-import com.blog.application.blog.entities.User;
-import com.blog.application.blog.repositories.UserRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
+import user.user_service.dtos.UserDto;
+import user.user_service.entities.User;
+import user.user_service.repositories.UserRepository;
 
 import java.util.Optional;
 
@@ -75,6 +76,7 @@ public class UserRepositoryTest {
 
         assertFalse(foundUser.isPresent());
     }
+
     @Test
     public void testFindOnlyUser_UserExists() {
         User user = new User();
@@ -86,6 +88,6 @@ public class UserRepositoryTest {
         Optional<UserDto> result = userRepository.findOnlyUser(savedUser.getId());
 
         UserDto expectedUserDto = new UserDto(savedUser.getId(), "testUser");
-         assertEquals(Optional.of(expectedUserDto), result);
+        assertEquals(Optional.of(expectedUserDto), result);
     }
 }

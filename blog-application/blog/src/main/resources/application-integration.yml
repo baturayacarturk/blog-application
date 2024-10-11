@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3307/blogdb?useSSL=false
+    username: bloguser
+    password: baturayacarturk
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  sql:
+    init:
+      mode: embedded
+  flyway:
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+  elasticsearch:
+    uris: http://elasticsearch:9200
+  kafka:
+    bootstrap-servers: kafka1:19092
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+
+eureka:
+  client:
+    enabled: false
+
+spring.cloud.discovery.enabled: false
+spring.cloud.service-registry.auto-registration.enabled: false
+
+logging:
+  level:
+    root: INFO
+    org.springframework.jdbc.datasource: DEBUG
+    com.zaxxer.hikari: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -1,16 +1,13 @@
 package com.blog.application.blog.controller;
 
 import com.blog.application.blog.controllers.PostController;
-import com.blog.application.blog.controllers.UserController;
 import com.blog.application.blog.dtos.common.SimplifiedPost;
 import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.requests.post.CreatePostRequest;
 import com.blog.application.blog.dtos.requests.post.UpdatePostRequest;
 import com.blog.application.blog.dtos.responses.post.*;
 import com.blog.application.blog.dtos.responses.tag.TagResponse;
-import com.blog.application.blog.entities.User;
-import com.blog.application.blog.repositories.TokenRepository;
-import com.blog.application.blog.repositories.UserRepository;
+
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.tag.TagService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,10 +49,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class PostControllerTest {
     @MockBean
     private PostService postService;
-    @MockBean
-    private UserRepository userRepository;
-    @MockBean
-    private TokenRepository tokenRepository;
 
     @MockBean
     private TagService tagService;
@@ -78,10 +71,6 @@ public class PostControllerTest {
     @Test
     @WithMockUser(username = "john_doe")
     void testCreatePost() throws Exception {
-        User user = new User();
-        user.setId(1L);
-        user.setUsername("john_doe");
-        userRepository.save(user);
 
         TagDto tagDto = new TagDto("Sample Tag");
         CreatePostRequest request = new CreatePostRequest();
@@ -110,38 +99,6 @@ public class PostControllerTest {
                 .andExpect(jsonPath("$.text", is(response.getText())))
                 .andExpect(jsonPath("$.tags.length()", is(1)))
                 .andExpect(jsonPath("$.tags[0].name", is(tagDto.getName())));
-    }
-
-    @Test
-    void testCreatePostWhenForbidden() throws Exception {
-        User user = new User();
-        user.setId(1L);
-        user.setUsername("john_doe");
-        userRepository.save(user);
-
-        TagDto tagDto = new TagDto("Sample Tag");
-        CreatePostRequest request = new CreatePostRequest();
-        request.setText("Text");
-        request.setTitle("Title");
-        request.setTags(List.of(tagDto));
-        request.setUserId(1L);
-
-        TagResponse tagResponse = new TagResponse();
-        tagResponse.setName("Sample Tag");
-
-        CreatedSimpleBlogPost response = new CreatedSimpleBlogPost();
-        response.setText("Text");
-        response.setTitle("Title");
-        response.setPostId(1L);
-        response.setTags(List.of(tagResponse));
-
-        Mockito.when(postService.createBlogPost(Mockito.any(CreatePostRequest.class))).thenReturn(response);
-
-        ResultActions resultActions = mockMvc.perform(post("/api/posts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsBytes(request)));
-
-        resultActions.andExpect(status().isForbidden());
     }
 
 
@@ -213,25 +170,6 @@ public class PostControllerTest {
                 .andExpect(jsonPath("$.text", is(response.getText())));
     }
 
-    @Test
-    void testUpdatePostWhenForbidden() throws Exception {
-        UpdatePostRequest request = new UpdatePostRequest();
-        request.setId(1L);
-        request.setTitle("Updated Title");
-        request.setText("Updated Text");
-
-        UpdatedPostResponse response = new UpdatedPostResponse();
-        response.setPostId(1L);
-        response.setTitle("Updated Title");
-        response.setText("Updated Text");
-        when(postService.updatePost(request)).thenReturn(response);
-
-        ResultActions resultActions = mockMvc.perform(put("/api/posts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsBytes(request)));
-
-        resultActions.andExpect(status().isForbidden());
-    }
 
     @Test
     @WithMockUser(username = "john_doe")
@@ -246,17 +184,4 @@ public class PostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
     }
-
-    @Test
-    void testDeletePostWhenForbidden() throws Exception {
-        DeletedPostResponse response = new DeletedPostResponse();
-        response.setResponse("Post deleted successfully");
-
-        when(postService.deletePostById(anyLong())).thenReturn(response);
-
-        mockMvc.perform(delete("/api/posts/delete/1")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
-    }
-
 }

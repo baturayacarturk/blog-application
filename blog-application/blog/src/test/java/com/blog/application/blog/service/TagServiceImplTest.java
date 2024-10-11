@@ -4,25 +4,18 @@ import com.blog.application.blog.dtos.common.TagDto;
 import com.blog.application.blog.dtos.responses.post.AddTagResponse;
 import com.blog.application.blog.entities.Post;
 import com.blog.application.blog.entities.Tag;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.exceptions.types.BusinessException;
 import com.blog.application.blog.repositories.TagRepository;
-import com.blog.application.blog.repositories.UserRepository;
 import com.blog.application.blog.services.post.PostService;
 import com.blog.application.blog.services.tag.TagServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.transaction.Transactional;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -43,10 +36,7 @@ public class TagServiceImplTest {
 
     @InjectMocks
     private TagServiceImpl tagService;
-    @Mock
-    private UserRepository userRepository;
 
-    private User mockUser;
     private Post mockPost;
     private Tag mockTag;
 
@@ -54,25 +44,12 @@ public class TagServiceImplTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        mockUser = new User();
-        mockUser.setId(1L);
-        mockUser.setUsername("testUser");
-        userRepository.save(mockUser);
-
         mockPost = new Post();
         mockPost.setId(1L);
 
         mockTag = new Tag();
         mockTag.setId(1L);
         mockTag.setName("Tag to Remove");
-
-        Authentication authentication = Mockito.mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(mockUser);
-
-        SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-
-        SecurityContextHolder.setContext(securityContext);
     }
 
     @Test

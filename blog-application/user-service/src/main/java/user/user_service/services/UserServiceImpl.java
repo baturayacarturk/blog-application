@@ -14,6 +14,7 @@ import user.user_service.dtos.AuthenticationDto;
 import user.user_service.dtos.UserDto;
 import user.user_service.entities.Token;
 import user.user_service.entities.User;
+import user.user_service.exceptions.types.BusinessException;
 import user.user_service.jwt.JwtService;
 import user.user_service.repositories.TokenRepository;
 import user.user_service.repositories.UserRepository;
@@ -72,6 +73,7 @@ public class UserServiceImpl implements UserService {
         var user = userRepository.findByUsername(authenticationRequest.getUsername());
         if (user.isEmpty()) {
             logger.error("User not found with username follows {}", authenticationRequest.getUsername());
+            throw new BusinessException("User not found");
         }
         var jwtToken = jwtService.generateToken(user.get());
         revokeAllUserTokens(user.get());

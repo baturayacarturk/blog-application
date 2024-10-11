@@ -1,33 +1,33 @@
-package com.blog.application.blog.service;
+package user.user_service.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import com.blog.application.blog.dtos.common.UserDto;
-import com.blog.application.blog.dtos.requests.user.AuthenticationRequest;
-import com.blog.application.blog.dtos.requests.user.RegisterRequest;
-import com.blog.application.blog.dtos.responses.user.AuthenticationResponse;
-import com.blog.application.blog.entities.Token;
-import com.blog.application.blog.entities.User;
-import com.blog.application.blog.exceptions.types.BusinessException;
-import com.blog.application.blog.jwt.config.JwtService;
-import com.blog.application.blog.repositories.TokenRepository;
-import com.blog.application.blog.repositories.UserRepository;
-import com.blog.application.blog.services.user.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import user.user_service.dtos.AuthenticationDto;
+import user.user_service.dtos.UserDto;
+import user.user_service.entities.Token;
+import user.user_service.entities.User;
+import user.user_service.exceptions.types.BusinessException;
+import user.user_service.jwt.JwtService;
+import user.user_service.repositories.TokenRepository;
+import user.user_service.repositories.UserRepository;
+import user.user_service.services.UserServiceImpl;
 
 import java.util.List;
 import java.util.Optional;
-@ActiveProfiles("test")
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ActiveProfiles("test")
 public class UserServiceImplTest {
 
     @InjectMocks
@@ -55,7 +55,7 @@ public class UserServiceImplTest {
 
     @Test
     public void testRegister_Success() {
-        RegisterRequest registerRequest = new RegisterRequest();
+        AuthenticationDto registerRequest = new AuthenticationDto();
         registerRequest.setUsername("newuser");
         registerRequest.setPassword("password");
         registerRequest.setDisplayName("New User");
@@ -70,7 +70,7 @@ public class UserServiceImplTest {
         when(userRepository.save(any(User.class))).thenReturn(user);
         when(jwtService.generateToken(any(User.class))).thenReturn("jwtToken");
 
-        AuthenticationResponse response = userService.register(registerRequest);
+        AuthenticationDto response = userService.register(registerRequest);
 
         assertNotNull(response);
         assertEquals("jwtToken", response.getToken());
@@ -83,7 +83,7 @@ public class UserServiceImplTest {
 
     @Test
     public void testRegister_UsernameTaken() {
-        RegisterRequest registerRequest = new RegisterRequest();
+        AuthenticationDto registerRequest = new AuthenticationDto();
         registerRequest.setUsername("existinguser");
         registerRequest.setPassword("password");
         registerRequest.setDisplayName("Existing User");
@@ -93,7 +93,7 @@ public class UserServiceImplTest {
 
         when(userRepository.findByUsername("existinguser")).thenReturn(Optional.of(existingUser));
 
-        BusinessException thrown = assertThrows(BusinessException.class, () -> {
+        AuthenticationCredentialsNotFoundException thrown = assertThrows(AuthenticationCredentialsNotFoundException.class, () -> {
             userService.register(registerRequest);
         });
 
@@ -104,7 +104,7 @@ public class UserServiceImplTest {
 
     @Test
     public void testAuthenticate_Success() {
-        AuthenticationRequest authRequest = new AuthenticationRequest();
+        AuthenticationDto authRequest = new AuthenticationDto();
         authRequest.setUsername("user");
         authRequest.setPassword("password");
 
@@ -117,7 +117,7 @@ public class UserServiceImplTest {
         when(userRepository.findByUsername("user")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(any(User.class))).thenReturn("jwtToken");
 
-        AuthenticationResponse response = userService.authenticate(authRequest);
+        AuthenticationDto response = userService.authenticate(authRequest);
 
         assertNotNull(response);
         assertEquals("jwtToken", response.getToken());
@@ -128,7 +128,7 @@ public class UserServiceImplTest {
 
     @Test
     public void testAuthenticate_UserNotFound() {
-        AuthenticationRequest authRequest = new AuthenticationRequest();
+        AuthenticationDto authRequest = new AuthenticationDto();
         authRequest.setUsername("nonexistentuser");
         authRequest.setPassword("password");
 
@@ -161,13 +161,15 @@ public class UserServiceImplTest {
 
         List<Token> tokens = List.of(token1, token2);
 
-        AuthenticationRequest authenticationRequest = new AuthenticationRequest("username", "password");
+        AuthenticationDto authenticationRequest = new AuthenticationDto();
+        authenticationRequest.setUsername("username");
+        authenticationRequest.setPassword("password");
 
         when(userRepository.findByUsername("username")).thenReturn(Optional.of(user));
         when(tokenRepository.findAllValidTokensByUser(1L)).thenReturn(tokens);
         when(jwtService.generateToken(user)).thenReturn("jwtToken");
 
-        AuthenticationResponse response = userService.authenticate(authenticationRequest);
+        AuthenticationDto response = userService.authenticate(authenticationRequest);
 
         assertNotNull(response);
         assertEquals("jwtToken", response.getToken());
@@ -180,6 +182,7 @@ public class UserServiceImplTest {
         assertTrue(token2.isExpired());
         assertTrue(token2.isRevoked());
     }
+
     @Test
     public void testFindOnlyUserById_UserExists() {
         Long userId = 1L;
@@ -187,7 +190,9 @@ public class UserServiceImplTest {
         mockUserDto.setId(userId);
         mockUserDto.setUsername("testUser");
         when(userRepository.findOnlyUser(userId)).thenReturn(Optional.of(mockUserDto));
+
         Optional<UserDto> result = userService.findOnlyUserById(userId);
+
         assertEquals(Optional.of(mockUserDto), result);
     }
 }

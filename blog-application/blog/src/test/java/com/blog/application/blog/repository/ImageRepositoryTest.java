@@ -23,9 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ImageRepositoryTest {
 
     @Autowired
-    private TestEntityManager entityManager;
-
-    @Autowired
     private ImageRepository imageRepository;
 
     @Autowired
@@ -46,7 +43,7 @@ public class ImageRepositoryTest {
         image.setFileName("test.jpg");
         image.setPost(testPost);
         image.setStorageType(StorageType.FILE_SYSTEM);
-        image = entityManager.persist(image);
+        image = imageRepository.save(image);
 
         Optional<Image> found = imageRepository.findByIdAndPostId(image.getId(), testPost.getId());
 
@@ -60,13 +57,13 @@ public class ImageRepositoryTest {
         image1.setFileName("test1.jpg");
         image1.setPost(testPost);
         image1.setStorageType(StorageType.FILE_SYSTEM);
-        entityManager.persist(image1);
+        imageRepository.save(image1);
 
         Image image2 = new Image();
         image2.setFileName("test2.jpg");
         image2.setPost(testPost);
         image2.setStorageType(StorageType.FILE_SYSTEM);
-        entityManager.persist(image2);
+        imageRepository.save(image2);
 
         List<Image> images = imageRepository.findAllByPostId(testPost.getId());
 

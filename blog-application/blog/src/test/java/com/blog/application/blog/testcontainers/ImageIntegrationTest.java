@@ -1,17 +1,15 @@
 package com.blog.application.blog.testcontainers;
 
+import com.blog.application.blog.dtos.responses.client.UserClientDto;
 import com.blog.application.blog.entities.Image;
 import com.blog.application.blog.entities.ImageVersion;
 import com.blog.application.blog.entities.Post;
-import com.blog.application.blog.entities.User;
 import com.blog.application.blog.enums.StorageType;
 import com.blog.application.blog.repositories.ImageRepository;
 import com.blog.application.blog.repositories.ImageVersionRepository;
 import com.blog.application.blog.repositories.PostRepository;
-import com.blog.application.blog.repositories.UserRepository;
+import com.blog.application.blog.services.client.UserFeignClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,12 +18,12 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -36,21 +34,21 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Testcontainers
-public class ImageIntegrationTest extends AbstractContainerBase {
+@ActiveProfiles("integration")
+public class ImageIntegrationTest  {
     @Autowired
     private MockMvc mockMvc;
 
@@ -65,14 +63,12 @@ public class ImageIntegrationTest extends AbstractContainerBase {
 
     @Autowired
     private PostRepository postRepository;
+    @MockBean
+    private UserFeignClient userFeignClient;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    private User testUser;
     private Post testPost;
-    private String jwtToken;
     private Path tempDir;
+    private UserClientDto userClientDto;
 
 
     @BeforeEach
@@ -82,23 +78,18 @@ public class ImageIntegrationTest extends AbstractContainerBase {
         imageVersionRepository.deleteAll();
         imageRepository.deleteAll();
         postRepository.deleteAll();
-        userRepository.deleteAll();
-
-        testUser = new User();
-        testUser.setUsername("testUser");
-        testUser.setPassword("password");
-        testUser.setDisplayName("Test User");
-        testUser = userRepository.save(testUser);
 
         testPost = new Post();
         testPost.setTitle("Test Post");
         testPost.setText("Test Post Text");
-        testPost.setUser(testUser);
+        testPost.setUserId(10L);
         testPost = postRepository.save(testPost);
+        userClientDto = new UserClientDto();
+        userClientDto.setId(10L);
+        when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
 
-        jwtToken = generateToken("testUser");
-        setUpSecurityContext(testUser);
     }
+
     @AfterEach
     public void tearDown() throws IOException {
         Files.walk(tempDir)
@@ -114,6 +105,7 @@ public class ImageIntegrationTest extends AbstractContainerBase {
         try (MockedStatic<ImageIO> imageIOMock = Mockito.mockStatic(ImageIO.class)) {
             BufferedImage mockBufferedImage = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
             imageIOMock.when(() -> ImageIO.read(any(ByteArrayInputStream.class))).thenReturn(mockBufferedImage);
+            when(userFeignClient.getUserDetails()).thenReturn(ResponseEntity.ok(userClientDto));
 
             ResultActions resultActions = mockMvc.perform(multipart("/api/images")
                     .file(file)
@@ -151,7 +143,7 @@ public class ImageIntegrationTest extends AbstractContainerBase {
                 .param("postId", testPost.getId().toString())
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions.andExpect(status().isNoContent());
+        resultActions.andExpect(status().isOk());
 
         assertThat(imageRepository.findById(image.getId())).isEmpty();
     }
@@ -190,6 +182,7 @@ public class ImageIntegrationTest extends AbstractContainerBase {
             assertThat(savedVersion.getHeight()).isEqualTo(800);
         }
     }
+
     @Test
     public void testGetVersionResponseById() throws Exception {
         try (MockedStatic<Files> filesMockedStatic = Mockito.mockStatic(Files.class)) {
@@ -293,16 +286,4 @@ public class ImageIntegrationTest extends AbstractContainerBase {
         return image;
     }
 
-    private static String generateToken(String username) {
-        return Jwts.builder()
-                .setSubject(username)
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
-                .signWith(SignatureAlgorithm.HS256, "47A52F686696CABA4A9824E6177DFFFF5161ASDFDS1D2DS")
-                .compact();
-    }
-
-    private void setUpSecurityContext(User user) {
-        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
 }

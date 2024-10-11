@@ -8,7 +8,6 @@ plugins {
     id("org.flywaydb.flyway") version "9.8.2"
     id("jacoco")
     id("org.sonarqube") version "4.2.1.3168"
-
 }
 
 group = "com.blog.application"
@@ -51,20 +50,29 @@ dependencies {
     implementation("org.apache.commons:commons-collections4:4.4")
     implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
     implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.10")
+    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.boot:spring-boot-starter-amqp")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
     implementation("org.elasticsearch:elasticsearch:7.17.10")
-
 
     runtimeOnly("mysql:mysql-connector-java:8.0.33")
     compileOnly("org.projectlombok:lombok:1.18.24")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.projectlombok:lombok:1.18.24")
-    testImplementation ("org.mockito:mockito-inline:4.5.1")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.mockito:mockito-inline:4.5.1")
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("org.testcontainers:testcontainers:1.20.1")
-    testImplementation("org.testcontainers:junit-jupiter:1.20.1")
-    testImplementation("org.testcontainers:mysql:1.20.1")
+    testImplementation("org.testcontainers:testcontainers:1.19.0")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.0")
+    testImplementation("org.testcontainers:mysql:1.19.0")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.testcontainers:elasticsearch:1.19.0")
+    testImplementation("org.testcontainers:kafka:1.19.0")
+    testImplementation("org.testcontainers:rabbitmq:1.19.0")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.mockito:mockito-core")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -80,12 +88,26 @@ tasks.withType<Test> {
     doNotTrackState("can't run a test twice without clean")
 }
 
-tasks.test {
+tasks.register<Test>("unit") {
+    exclude("**/integration/**", "**/testcontainers/**", "**/BlogApplicationTests.class")
+
+    systemProperty("spring.profiles.active", "test")
     testLogging {
         events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
         exceptionFormat = TestExceptionFormat.FULL
     }
 }
+
+tasks.register<Test>("Integration") {
+    include("**/testcontainers/**","**/integration/**")
+    exclude("**/BlogApplicationTest.class")
+    systemProperty("spring.profiles.active", "integration")
+    testLogging {
+        events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
+        exceptionFormat = TestExceptionFormat.FULL
+    }
+}
+
 sonar {
     properties {
         property("sonar.projectKey", "blog")
